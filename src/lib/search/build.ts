@@ -134,6 +134,17 @@ export function buildIndex(dataset: Dataset): SearchIndex {
   return prepare(dataset, mini);
 }
 
+/**
+ * Same index, added in chunks with a yield to the event loop between chunks (MiniSearch's `addAllAsync`).
+ * Only for the main-thread fallback used when Web Workers are unavailable, so typing stays responsive between chunks.
+ * The sorted artist lists in `prepare` still run in one go (tens of milliseconds).
+ */
+export async function buildIndexAsync(dataset: Dataset, chunkSize = 1000): Promise<SearchIndex> {
+  const mini = new MiniSearch(MINI_OPTIONS);
+  await mini.addAllAsync(toDocs(dataset), { chunkSize });
+  return prepare(dataset, mini);
+}
+
 /** The full-text part of the index as a JSON string (`MiniSearch.toJSON`), for a prebuilt-index delivery. */
 export function serializeIndex(index: SearchIndex): string {
   return JSON.stringify(index.mini);

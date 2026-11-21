@@ -64,3 +64,18 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Known limits, documented:** a typo in a 3-letter last word finds nothing until the 4th letter; 4-5 letter transpositions are often missed. Alias suggestions are only tested on synthetic data because the real data has no alias with a distinct normalised form.
 - **Blockers:** none.
 
+## S02 / T005 — Load the dataset and keep typing fast ✅ (2026-11-21)
+
+**Goal met.** The song book loads once, the index is built in a Web Worker, typing never blocks, and a failed load shows a clear retry message. **S02 is complete.**
+
+- **Decision (A-008, measured):** build the index at runtime in the worker. A pre-built index was worse in all 9 network/CPU cells: it saves 0.55-0.9 s of compute but costs 1.17 MB more transfer.
+- **Typing:** the only long task during load is the page's own hydration; slowest key/input event while loading 16 ms; 0 characters lost; per-keystroke p95 41 ms at 4x CPU, 60 ms at 6x (one 6x outlier at 102 ms in 150 keystrokes).
+- **Budget, stated honestly:** first results within 2 s **after the dataset has arrived** (client decision per the recommendation). From navigation start: ~1.7 s on Wi-Fi at 4x CPU, ~7.3 s on Slow 4G, ~10.4 s on Fast 3G, because the 0.95 MB data (0.74 MB Brotli) needs ~4.8 s at 1.6 Mbps. First visit only; repeat visits revalidate.
+- **Reliability:** latest-request-wins protocol, queued latest-only before ready, retry bypasses the HTTP cache, main-thread fallback if no Worker. QA forced: 500s, offline then online, truncated/garbage/HTML responses, a 10 s slow load, a blocked Worker: always the documented message, never a blank page.
+- **Bug found and fixed:** a songs/artists pair from two different imports (cache or CDN skew) could load silently with wrong artist attributions. Both files now carry a content-hash id (dataset format v2) and a mismatch is a load error that retry recovers. Song and artist content unchanged (47,399 songs, 14,482 artists, verified); size 954,949 B gzipped.
+- **QA:** `npm run qa` → pass (192 tests); `npm run build` and `npm run e2e:smoke` pass; worker answers equal direct engine calls on 100 queries (0 differences); 17 protocol mutations, 16 killed, the survivor equivalent.
+- **Tooling added:** `@playwright/test` 1.63.0 (exact, matches the cached Chromium; T009 reuses it); `vercel.json` cache headers (immutable assets, revalidated data); `scripts/serve-out.mjs`.
+- **Not verified, open:** a real phone (CDP cannot throttle a worker's CPU, so compute figures come from the same code on the throttled main thread), Safari/Firefox workers, real Vercel headers (not deployed).
+- **Cheap follow-up for T006/T009:** a preload hint so the data download starts at page load, not after hydration.
+- **Blockers:** none.
+

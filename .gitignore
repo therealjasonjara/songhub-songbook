@@ -13,3 +13,4 @@ data/source/
 data/work/
 # tooling config
 .claude/
+.measure/

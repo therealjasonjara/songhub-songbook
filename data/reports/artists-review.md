@@ -31,7 +31,7 @@ To keep two spellings apart that the automatic merge would join (for example `B.
 - Merged by rule, please confirm (section f): **32** group(s)
 - `keepSeparate` groups applied: 2
 - Near-match groups not merged: **960** (the 150 biggest are listed)
-- Dataset size (Node zlib, level 9, as the build measures it): songs 2,055,360 B (2007.2 KB) raw, 764,422 B (746.5 KB) gzipped; artists 575,018 B (561.5 KB) raw, 190,470 B (186.0 KB) gzipped; **total 954,892 B (932.5 KB) gzipped** against the 1.5 MB budget
+- Dataset size (Node zlib, level 9, as the build measures it): songs 2,055,384 B (2007.2 KB) raw, 764,453 B (746.5 KB) gzipped; artists 575,042 B (561.6 KB) raw, 190,496 B (186.0 KB) gzipped; **total 954,949 B (932.6 KB) gzipped** against the 1.5 MB budget
 
 ## (a) Near-matches that were NOT merged
 

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { encodeDataset } from '../../src/lib/dataset.ts';
+import { contentId } from './dataset-id.ts';
 import { buildArtists, type MergeEntry, type RawSong } from './artists.ts';
 import { findNearMatches, renderReview } from './review.ts';
 
@@ -25,7 +26,7 @@ function main(): number {
   }
 
   const { dataset, diagnostics } = buildArtists(rows, merges);
-  const { songsJson, artistsJson } = encodeDataset(dataset);
+  const { songsJson, artistsJson, id } = encodeDataset(dataset, contentId);
   const gz = (s: string) => gzipSync(Buffer.from(s), { level: 9 }).length;
   const sizes = {
     songsRaw: Buffer.byteLength(songsJson),
@@ -44,6 +45,7 @@ function main(): number {
   writeFileSync(join(reportDir, 'artists-review.md'), renderReview(dataset.artists, diagnostics, near, sizes));
 
   const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
+  console.log(`Dataset id ${id}.`);
   console.log(`Songs: ${dataset.songs.length}. Artists: ${diagnostics.artistsAfterMerge} (spellings ${diagnostics.distinctSpellings}, after auto-merge ${diagnostics.artistsBeforeMerge}).`);
   console.log(`Songs with featured artists: ${diagnostics.songsWithFeatured}. Near-match groups: ${near.length}.`);
   console.log(`songs.json ${kb(sizes.songsRaw)} (${kb(sizes.songsGzip)} gz), artists.json ${kb(sizes.artistsRaw)} (${kb(sizes.artistsGzip)} gz), total ${kb(sizes.songsGzip + sizes.artistsGzip)} gz`);
