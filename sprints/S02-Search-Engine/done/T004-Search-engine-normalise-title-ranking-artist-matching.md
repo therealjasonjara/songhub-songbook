@@ -2,7 +2,7 @@
 
 **Sprint:** S02-Search-Engine
 **Size:** M
-**Status:** todo
+**Status:** done
 **Assigned agents:** Frontend + QA
 
 ## Story
@@ -34,12 +34,12 @@ As a guest, I get the right songs when I type part of a title, even with a typo,
 - **Breaking for existing consumers:** no
 
 ## Technical Notes
-Use MiniSearch's prefix and fuzzy options; tune fuzziness on real data, and write the chosen values down as A-005 in `DECISIONS.md`.
+Use MiniSearch's prefix and fuzzy options; tune fuzziness on real data, and write the chosen values down as A-007 in `DECISIONS.md` (A-005 and A-006 were already taken by the import and artists decisions).
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] Acceptance criteria verified against observed behaviour
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] Acceptance criteria verified against observed behaviour
 
 ## Blockers
 - None

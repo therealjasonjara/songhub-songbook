@@ -51,3 +51,16 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Notes for later tickets:** artist ids can contain dots (`b.o.b`), so routing and URLs must cope (T008). `Bury It feat. Hayley Williams feat. ...` keeps the second cut-off marker whole.
 - **Blockers:** none.
 
+## S02 / T004 — Search engine: normalise, title ranking, artist matching ✅ (2026-11-21)
+
+**Goal met.** A pure-TypeScript engine (`src/lib/search/`, MiniSearch 7.2.0) that finds songs by title, forgives typos, ranks sensibly and suggests artists. No DOM or Node APIs, so it can run in a Web Worker.
+
+- **API:** `buildIndex`, `searchSongs` (best 50, full `total`, `hasMore`), `suggestArtists` (max 3 strong matches, aliases shown canonically), `songsByArtist`.
+- **Behaviour:** punctuation, apostrophes, brackets, diacritics and `&`/`and` ignored; AND across words with the last word as a prefix; tiers exact > starts-with > phrase > word-prefix > credit-only > typo. The artist credit is also searched, at lower weight, so `hotel california eagles` works; a title match always outranks a credit-only match.
+- **Typo rule (measured on 600 real titles with one typo):** none under 4 letters, 1 edit for 4-5, 2 edits for 6+; recall 364/600 against 337 for the first proposal. Fuzzy only runs when fewer than 5 exact matches exist.
+- **Dotted titles:** `Mr.Brightside`-style titles (106) are indexed under both spellings so `mr brightside` works; initialisms like `R.E.M.` stay joined. Shipped data and the normaliser are unchanged.
+- **Measured (Node, 47,399 songs):** index build ~385 ms, per-query median 1.5 ms, **p95 ~14 ms** (budget 100 ms), worst ~77 ms. Serialised index 1.17 MB gzipped, larger than the dataset (0.95 MB), so T005 should build in the browser, not ship it prebuilt. Mobile build time (~1-2 s) is an estimate, not a device measurement.
+- **QA:** `npm run qa` → pass (145 tests). Independent brute-force oracle over 320 queries: 0 disagreements. 200 typo cases at 6+ letters: 200/200 in the top 50. All 14,482 `songsByArtist` lists match their counts. 40 adversarial inputs: 0 throws, all < 100 ms. 42 mutations, the surviving gaps (fuzzy-gate threshold) now covered by a test.
+- **Known limits, documented:** a typo in a 3-letter last word finds nothing until the 4th letter; 4-5 letter transpositions are often missed. Alias suggestions are only tested on synthetic data because the real data has no alias with a distinct normalised form.
+- **Blockers:** none.
+

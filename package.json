@@ -17,6 +17,7 @@
     "qa": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "minisearch": "7.2.0",
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1"
