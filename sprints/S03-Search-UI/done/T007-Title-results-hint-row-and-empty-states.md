@@ -2,7 +2,7 @@
 
 **Sprint:** S03-Search-UI
 **Size:** M
-**Status:** todo
+**Status:** done
 **Assigned agents:** Design + Frontend + QA
 
 ## Story
@@ -33,13 +33,13 @@ As a guest, I type a title and see song numbers, large and readable, appearing a
 - **Breaking for existing consumers:** no
 
 ## Technical Notes
-Fixed row height keeps the list simple; no windowing is needed for 50 rows.
+Rows are 88px minimum (exactly 88px at normal text size) and grow when the guest enlarges their text (A-011); no windowing is needed for 50 rows.
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] `npm run qa:full` (UI tickets)
-- [ ] Acceptance criteria verified against observed behaviour
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] `npm run qa:full` (UI tickets)
+- [x] Acceptance criteria verified against observed behaviour — verified in real Chromium; NOT yet on a real phone or in Safari (open)
 
 ## Blockers
 - None

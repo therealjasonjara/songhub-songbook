@@ -92,3 +92,19 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Not verified, open:** real phone, iOS Safari, Firefox/WebKit (the native cancel-button hiding was checked in Chromium only), the on-screen keyboard, real OS text-size scaling, real Vercel headers.
 - **Blockers:** none.
 
+## S03 / T007 — Title results, hint row and empty states ✅ (2026-11-21)
+
+**Goal met.** A guest types a title and sees song numbers, large and readable, appearing as they type.
+
+- **Built:** the song row (88px at normal text, number 36px 800 accent in a 136px column, title 17/22 clamped to 2 lines, artist line showing the full printed credit, `ul`/`li` with no handlers or tabindex, pressed state), the top-50 list with the 64px hint row, the `No songs found` state with the echoed query, and mutually exclusive states (home / loading / error / list / empty). Screens: `docs/design/built/05` to `12`.
+- **Correctness under timing:** the empty state never shows for an unanswered query (sampled every animation frame while typing fast on a throttled CPU, 0 violations); previous rows stay until the new answer arrives; punctuation-only input shows home; clearing then typing never shows the old query's rows; a new query scrolls back to the top and the first row sits directly under the sticky strip.
+- **Real-data checks:** 100 random rows equal the dataset exactly (title, printed credit, number); the 39 songs with no artist show no gap; every 5-digit number fits the 136px column (widest ~118px); injected markup renders as text. Boundaries verified with the real engine: 49 and 50 results show no hint, 51 and 52 show 50 rows plus the hint.
+- **QA:** `npm run qa:full` → pass (257 tests, build, 18 e2e steps). axe-core: 0 violations in 14 runs (both themes, all states). Keystroke-to-new-rows about 36 ms at 4x CPU (p95 45); scrolling 50 rows shows no jank; results arrive through the worker. 21 mutations caught; 5 survivors from the first QA pass are now covered.
+- **Bug found and fixed (A-011):** with enlarged text (Android font scale), the 5-digit number overflowed its fixed 136px column and drew over the title (at 1.3x, 40 of 50 rows). The column is now `min-width: 136px` and the row `min-height: 88px`: identical at normal size, growing when text is enlarged; 0 overlap from 1.15x to 2x at 320 and 390 wide. Side effect: with enlarged text, titles start further right on 5-digit rows. The spec is updated.
+- **Also:** the row memo now compares `n`, `title` and `credit` so only genuinely new rows re-render (worker replies are fresh copies); the long-query echo keeps its closing quote and period directly after the ellipsis; the `qa:full` script now exists (qa, build, e2e smoke).
+- **Decision for T008:** an artist's list can reach 568 rows. A-011 records that variable row height rules out fixed-height windowing; use `content-visibility: auto` with `contain-intrinsic-size: auto 88px`.
+- **Behaviour confirmed:** typing replaces history, so Back from a typed query leaves the app. T008 adds one history entry when an artist is opened.
+- **Watch item:** one `npm run qa` run showed 2 failing unit tests that passed on immediate re-run; 4 further full-suite runs were all green. Probably load from heavy parallel jobs. If it recurs, look at the integration tests' timeouts.
+- **Not verified, open:** a real phone, Safari/WebKit (`-webkit-line-clamp`, `:active` on touch), real Android font scaling (emulated with a CSS multiplier), VoiceOver/TalkBack reading the live region.
+- **Blockers:** none.
+

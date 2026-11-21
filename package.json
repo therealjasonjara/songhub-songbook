@@ -16,6 +16,7 @@
     "build:data": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import/build-data.ts",
     "qa": "npm run typecheck && npm run lint && npm run test",
     "e2e:smoke": "node tests/e2e/search-smoke.mjs",
+    "qa:full": "npm run qa && npm run build && npm run e2e:smoke",
     "measure:browser": "node scripts/measure-browser.mjs"
   },
   "dependencies": {

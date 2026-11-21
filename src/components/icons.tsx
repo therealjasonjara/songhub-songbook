@@ -71,3 +71,13 @@ export function MoonIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** Magnifier with an x in the lens (the empty state, 48px, muted). */
+export function SearchOffIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16.5 16.5 4.5 4.5M8.5 8.5l5 5M13.5 8.5l-5 5" />
+    </Svg>
+  );
+}

@@ -72,6 +72,8 @@ export function useSearch(query: string): UseSearchResult {
   }, []);
 
   const empty = trimmed === '';
+  // Clearing the box forgets the old answer, so typing again never flashes rows from an unrelated query.
+  if (empty && answer !== NO_ANSWER) setAnswer(NO_ANSWER);
   const requestFailed = failed !== null && failed.query === trimmed && failed.attempt === attempt;
   const current = !empty && answer.query === trimmed;
   return {
