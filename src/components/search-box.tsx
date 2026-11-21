@@ -3,6 +3,9 @@
 import { useRef } from 'react';
 import { CloseIcon, SearchIcon } from '@/components/icons';
 
+/** The id of the search field: the artist view hands focus back to it. */
+export const SEARCH_INPUT_ID = 'search-input';
+
 export interface SearchBoxProps {
   value: string;
   onChange: (value: string) => void;
@@ -23,13 +26,13 @@ export function SearchBox({ value, onChange }: SearchBoxProps) {
   return (
     <div role="search" className="sticky top-0 z-10 h-[72px] bg-bg px-4 py-2">
       <div className="relative h-14 rounded-input bg-input-bg">
-        <label htmlFor="search-input" className="sr-only">
+        <label htmlFor={SEARCH_INPUT_ID} className="sr-only">
           Search song or artist
         </label>
         <SearchIcon size={24} className="pointer-events-none absolute top-4 left-4 text-text-muted" />
         <input
           ref={inputRef}
-          id="search-input"
+          id={SEARCH_INPUT_ID}
           name="q"
           type="search"
           value={value}

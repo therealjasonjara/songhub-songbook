@@ -108,3 +108,18 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Not verified, open:** a real phone, Safari/WebKit (`-webkit-line-clamp`, `:active` on touch), real Android font scaling (emulated with a CSS multiplier), VoiceOver/TalkBack reading the live region.
 - **Blockers:** none.
 
+## S03 / T008 — Artist matches and the artist song list ✅ (2026-11-21)
+
+**Goal met.** A guest types an artist, taps the match, and sees every song by that artist.
+
+- **Built:** up to 3 artist rows above the songs (64px, name, `N songs`, chevron) as real `<a href>` links with `ARTISTS`/`SONGS` labels (SONGS only when ARTISTS shows); the artist view (80px heading block, 44x44 back chevron, name 24/30, count including featured songs) listing the artist's full A-Z list with the same song row as T007; Spec colours: song numbers Inter 800 accent, accent focus border (none of the Stitch flaws copied). Screens `docs/design/built/13` to `18`.
+- **Navigation (A-012):** opening an artist adds exactly one history entry, so Back returns to the results with the box text and scroll position restored; the back chevron does the same, or on a direct `?artist=` load replaces the URL with `?q=` instead of leaving the app; editing or clearing the box leaves the view; reload restores it; unknown or malformed ids (empty, nonexistent, bad encoding, script text, 5,000 characters, duplicates) fall back to normal results with no crash; `b.o.b` and the other dotted id round-trip; ctrl- and middle-click open a new tab with the right URL.
+- **Data correctness:** all 14,482 artist counts equal the songs-derived counts; 64 artists (the top 10, `unknown`, merged aliases, featured-only artists, count-1) show exactly `count` rows in A-Z order, with credits as printed; the count in an artist row equals the count in its view.
+- **Speed (the largest list, 568 songs, `content-visibility: auto`):** first paint 47 ms at 1x, 86 ms at 4x, 120 ms at 6x CPU; no long task; scrolling worst frame 18-28 ms. With `content-visibility` forced off: 165 ms at 4x with a 105 ms long task, so the choice is justified. Opening a view while typing stays responsive (30 ms).
+- **QA:** `npm run qa:full` → pass (317 tests, build, e2e). axe-core: 0 violations in 12 states plus the 568-row view. 13 mutations caught. Rapid-click and Back/Forward races: never a blank screen or mismatched heading and list.
+- **Bug found and fixed:** a tap moved focus to the heading and the live region said the same `<name>, N songs` 1 ms later, so a screen reader would likely read it twice. The live region now announces the artist only where focus does not move (a direct load or Forward). Both paths are tested; not verifiable without VoiceOver/TalkBack.
+- **Flaky test explained and fixed:** the intermittent `npm run qa` failure seen since T007 was the real-data test "every title with a dotted word is found", exceeding its 5 s default timeout (5.17 s) on a busy machine. Its timeout is now 30 s.
+- **Notes:** the heading block is `min-height: 80px` (exactly 80 with a one-line name, 105 with two lines at 320 wide); a reload on an artist page no longer restores scroll (manual scroll restoration, documented); a bare `?artist=` is harmless and left in the address bar; two blank frames can occur at 6x CPU while the big view loads.
+- **Not verified, open:** a real phone, Safari/WebKit, Firefox, VoiceOver/TalkBack, the iOS back-swipe and bfcache, the on-screen keyboard opening when Back refocuses the search box.
+- **Blockers:** none.
+

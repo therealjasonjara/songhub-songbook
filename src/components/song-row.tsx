@@ -3,6 +3,12 @@ import type { SongHit } from '@/lib/search/types';
 
 export interface SongRowProps {
   song: SongHit;
+  /**
+   * Long lists (the artist view, up to 568 rows): the browser skips layout and paint of rows that are off screen
+   * (`content-visibility: auto`). 88px is the exact height at normal text size and `auto` remembers the real height
+   * once a row was seen, so enlarged text stays correct. Constant for a list, so it is not part of `sameRow`.
+   */
+  deferOffscreen?: boolean;
 }
 
 /**
@@ -25,9 +31,13 @@ export function songRowLabel(song: SongHit): string {
  * A list item, not a control: no tabindex, no handler. The visible text is hidden from assistive technology and a
  * single visually-hidden sentence is read instead, so the number comes first.
  */
-export const SongRow = memo(function SongRow({ song }: SongRowProps) {
+export const SongRow = memo(function SongRow({ song, deferOffscreen = false }: SongRowProps) {
   return (
-    <li className="box-border flex min-h-[88px] w-full items-center gap-3 border-b border-divider px-4 py-2 select-none active:bg-surface-pressed">
+    <li
+      className={`box-border flex min-h-[88px] w-full items-center gap-3 border-b border-divider px-4 py-2 select-none active:bg-surface-pressed${
+        deferOffscreen ? ' [contain-intrinsic-size:auto_88px] [content-visibility:auto]' : ''
+      }`}
+    >
       <span className="sr-only">{songRowLabel(song)}</span>
       <span
         aria-hidden="true"

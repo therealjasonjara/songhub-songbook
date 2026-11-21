@@ -1,13 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MusicNoteIcon } from '@/components/icons';
+import { ArtistMatches } from '@/components/artist-matches';
+import { ArtistView } from '@/components/artist-view';
 import { NoResults } from '@/components/no-results';
 import { ResultsList } from '@/components/results-list';
-import { SearchBox } from '@/components/search-box';
-import { useQueryParam } from '@/hooks/use-query-param';
+import { SEARCH_INPUT_ID, SearchBox } from '@/components/search-box';
+import { useArtistSongs } from '@/hooks/use-artist-songs';
+import { useNavigation } from '@/hooks/use-navigation';
 import { useSearch } from '@/hooks/use-search';
 import { useSettledValue } from '@/hooks/use-settled-value';
+import { artistLabel } from '@/lib/artist-view';
+import { readHistoryState } from '@/lib/query-url';
+import { LOAD_ERROR_MESSAGE, SEARCH_ERROR_MESSAGE } from '@/lib/search/client';
 import { hasSearchableText, resultAnnouncement } from '@/lib/search/announce';
 import { normalize } from '@/lib/normalize';
 
@@ -68,22 +74,50 @@ export function SearchStatus({ typed, loading, error, retry, announcement = null
 }
 
 /**
- * The search screen under the header. The text is in the address bar (`?q=`); results are produced by
- * `useSearch`. Exactly one of these shows under the box: home, loading line, error, results, no results.
+ * The search screen under the header. The text is in the address bar (`?q=`) and so is the open artist
+ * (`?artist=`); results are produced by `useSearch`, the artist's list by `useArtistSongs`. Exactly one of these
+ * shows under the box: home, loading line, error, results (artists above songs), no results, or the artist view.
  */
 export function SearchApp() {
-  const [query, setQuery] = useQueryParam();
+  const { query, artist, setQuery, openArtist, closeArtist, dropArtist } = useNavigation();
   const search = useSearch(query);
+  const artistSongs = useArtistSongs(artist);
+  // An id the song book does not know is ignored: the normal results (or home) for `q` show, and the URL is cleaned.
+  const unknownArtist = artistSongs.status === 'unknown';
+  const inArtistView = artist !== null && !unknownArtist;
   // Whitespace- or punctuation-only input has nothing to search for: it is the home state again.
   const typed = hasSearchableText(query, normalize);
   // Not-loading means the dataset is ready or has failed; the hook's `loading` also covers "waiting for the reply".
   const waitingForSongBook = search.status === 'loading';
+  const loadFailed = search.status === 'error';
   const ready = search.status === 'ready' && search.error === null;
   // Only an answered query may say "No songs found"; while the next answer is in flight the previous rows stay.
   const answered = typed && ready && !search.loading;
-  const showList = typed && ready && search.songs.length > 0;
-  const showEmpty = answered && search.total === 0;
-  const announcement = useSettledValue(answered ? resultAnnouncement(search.total) : null, ANNOUNCE_DELAY_MS);
+  const showArtists = !inArtistView && typed && ready && search.artists.length > 0;
+  const showList = !inArtistView && typed && ready && search.songs.length > 0;
+  // Artists but no songs: the artists are the answer, so no empty state.
+  const showEmpty = !inArtistView && answered && search.total === 0 && search.artists.length === 0;
+  // A tap moves focus to the heading block, whose accessible name already says "<name>, N songs"; announcing the same
+  // text in the live region as well would be read twice (QA, A-012). It is announced only where focus does not move
+  // (a direct load, or Forward into the artist view).
+  const [focusMovesToHeading, setFocusMovesToHeading] = useState(false);
+  const artistMessage =
+    inArtistView && artistSongs.heading !== null && !focusMovesToHeading
+      ? artistLabel(artistSongs.heading.name, artistSongs.heading.count)
+      : null;
+  const resultMessage = !inArtistView && answered ? resultAnnouncement(search.total) : null;
+  // One live region: the artist and its count when the view opens, otherwise the result count (after the query settles).
+  const announcement = useSettledValue(artistMessage ?? resultMessage, artistMessage !== null ? 0 : ANNOUNCE_DELAY_MS);
+  let error = search.error;
+  if (inArtistView) error = loadFailed ? LOAD_ERROR_MESSAGE : artistSongs.status === 'failed' ? SEARCH_ERROR_MESSAGE : null;
+  const retry = () => {
+    search.retry();
+    artistSongs.retry();
+  };
+
+  const headingRef = useRef<HTMLDivElement>(null);
+  const focusHeadingWhenReady = useRef(false);
+  const wasInArtistView = useRef(false);
 
   // A new query starts at the top: results scroll under the sticky strip.
   useEffect(() => {
@@ -91,19 +125,62 @@ export function SearchApp() {
     if (scroller) scroller.scrollTop = 0;
   }, [query]);
 
+  // A made-up or outdated `?artist=` id is dropped from the address bar (replace, no history entry).
+  useEffect(() => {
+    if (unknownArtist) dropArtist();
+  }, [unknownArtist, dropArtist]);
+
+  // Opening an artist starts at the top of its list.
+  useEffect(() => {
+    if (artist === null) return;
+    const scroller = document.scrollingElement;
+    if (scroller) scroller.scrollTop = 0;
+  }, [artist]);
+
+  // A tap on an artist moves focus to the heading block once it exists; a direct load keeps focus in the search box.
+  useEffect(() => {
+    if (artistSongs.status === 'ready' && focusHeadingWhenReady.current) {
+      focusHeadingWhenReady.current = false;
+      headingRef.current?.focus({ preventScroll: true });
+    }
+  }, [artistSongs.status, artist]);
+
+  // Back to the results: focus returns to the search box and the results are scrolled to where they were.
+  useLayoutEffect(() => {
+    if (wasInArtistView.current && !inArtistView) {
+      setFocusMovesToHeading(false);
+      document.getElementById(SEARCH_INPUT_ID)?.focus({ preventScroll: true });
+      const scroller = document.scrollingElement;
+      if (scroller) scroller.scrollTop = readHistoryState(window.history.state).songbookScrollY ?? 0;
+    }
+    wasInArtistView.current = inArtistView;
+  }, [inArtistView]);
+
+  function onOpenArtist(artistId: string) {
+    focusHeadingWhenReady.current = true;
+    setFocusMovesToHeading(true);
+    openArtist(artistId);
+  }
+
+  const hasBlocks = showArtists || showList || (inArtistView && artistSongs.status === 'ready');
+
   return (
     <>
       <SearchBox value={query} onChange={setQuery} />
-      {showList ? <ResultsList songs={search.songs} hasMore={search.hasMore} /> : null}
+      {showArtists ? <ArtistMatches query={query} artists={search.artists} onOpen={onOpenArtist} /> : null}
+      {showList ? <ResultsList songs={search.songs} hasMore={search.hasMore} showLabel={showArtists} /> : null}
+      {inArtistView && artistSongs.status === 'ready' && artistSongs.heading !== null ? (
+        <ArtistView heading={artistSongs.heading} songs={artistSongs.songs} onBack={closeArtist} headingRef={headingRef} />
+      ) : null}
       {/* 56px here + the box's 8px bottom padding = 64px below the field */}
-      <div className={showList ? 'px-4' : 'mt-14 px-4'}>
-        {!typed && search.error === null ? <HomeState /> : null}
+      <div className={hasBlocks ? 'px-4' : 'mt-14 px-4'}>
+        {!typed && !inArtistView && search.error === null ? <HomeState /> : null}
         {showEmpty ? <NoResults query={query.trim()} /> : null}
         <SearchStatus
-          typed={typed}
+          typed={typed || inArtistView}
           loading={waitingForSongBook}
-          error={search.error}
-          retry={search.retry}
+          error={error}
+          retry={retry}
           announcement={announcement}
         />
       </div>

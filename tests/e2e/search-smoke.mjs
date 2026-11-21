@@ -3,7 +3,9 @@
  * the page is ready to type, the query is mirrored to ?q=, the dataset loads in the worker (each file's bytes once),
  * typing is not blocked while it loads, the theme toggle works, and a failed load shows the retry message and recovers.
  * T007: real results (a known song number, the empty state, 50 rows + the hint row), no console errors, and the
- * keystroke cost of a large result set at 4x CPU. Not part of `npm run qa` yet (T009 owns the e2e suite).
+ * keystroke cost of a large result set at 4x CPU. T008: artist rows above the songs, the artist view (heading, count,
+ * full list), Back (button and browser) with the scroll restored, deep links (dotted id, unknown id), and the
+ * 568-row list at 4x CPU. Not part of `npm run qa` yet (T009 owns the e2e suite).
  *
  *   npm run e2e:smoke
  */
@@ -345,6 +347,320 @@ await step('keystroke cost with a large result set (love, 4x CPU slowdown) stays
   const slowest = Math.max(0, ...typing, ...per);
   console.log(`     4x CPU: slowest key/input event ${Math.max(0, ...typing).toFixed(0)} ms, keystroke-to-next-paint ${per.map((x) => x.toFixed(0)).join('/')} ms`);
   assert.ok(slowest < 100, `slowest keystroke ${slowest.toFixed(0)} ms (limit 100)`);
+  await context.close();
+});
+
+
+// ---- T008: artists --------------------------------------------------------------------------------------------
+const artistData = JSON.parse(readFileSync(new URL('../../public/data/artists.json', import.meta.url), 'utf8'));
+/** id -> { name, count } from the dataset itself ([id, name, aliases, count] per artist). */
+const artistById = new Map(artistData.artists.map(([id, name, , count]) => [id, { name, count }]));
+const ARTIST_LINKS = 'main section[aria-label="Artists"] a';
+const ARTIST_ROWS = 'main ul[aria-label^="Songs by"] > li';
+const HEADING = 'main [role="group"][aria-label]';
+const idOf = (href) => new URL(href, 'http://x/').searchParams.get('artist');
+const countText = (n) => (n === 1 ? '1 song' : `${n.toLocaleString('en-US')} songs`);
+
+await step('typing eagl shows ARTISTS above SONGS: 64px rows, 32px labels, name 17/22, count 14/20, divider, no console errors', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await open(context);
+  const problems = [];
+  page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));
+  page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+  await page.goto(base + '/');
+  await hydrated(page);
+  await page.keyboard.type('eagl', { delay: 40 });
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  await page.locator(ROWS).first().waitFor();
+  const m = await page.evaluate((ARTIST_LINKS) => {
+    const r = (el) => el.getBoundingClientRect();
+    const cs = (el) => getComputedStyle(el);
+    const links = [...document.querySelectorAll(ARTIST_LINKS)];
+    const labels = [...document.querySelectorAll('main h2')].filter((h) => ['Artists', 'Songs'].includes(h.textContent));
+    const first = links[0];
+    const [, name, count, chevron] = first.children;
+    return {
+      hrefs: links.map((a) => a.getAttribute('href')),
+      heights: links.map((a) => r(a).height),
+      labelHeights: labels.map((l) => r(l).height),
+      labelText: labels.map((l) => l.textContent),
+      labelFont: [cs(labels[0]).fontSize, cs(labels[0]).lineHeight, cs(labels[0]).fontWeight, cs(labels[0]).letterSpacing, cs(labels[0]).textTransform, cs(labels[0]).paddingLeft],
+      nameFont: [cs(name).fontSize, cs(name).lineHeight, cs(name).fontWeight],
+      countFont: [cs(count).fontSize, cs(count).lineHeight, cs(count).fontWeight],
+      chevron: [r(chevron).width, r(chevron).height],
+      gapCountChevron: r(chevron).left - r(count).right,
+      divider: cs(first.parentElement).borderBottomWidth,
+      side: [r(name).left - r(first).left, r(first).right - r(chevron).right],
+      lastLinkBottom: r(links.at(-1)).bottom,
+      songsLabelTop: r(labels[1]).top,
+      firstRowTop: r(document.querySelector('main ul[aria-label="Song results"] > li')).top,
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  }, ARTIST_LINKS);
+  assert.ok(m.hrefs.length >= 1 && m.hrefs.length <= 3, `1-3 artists (got ${m.hrefs.length})`);
+  assert.ok(m.hrefs.every((h) => /^\?q=eagl&artist=[^&]+$/.test(h)), `real links ?q=eagl&artist=<id>: ${m.hrefs}`);
+  assert.ok(m.heights.every((h) => h === 64), `artist rows are 64px (${m.heights})`);
+  assert.deepEqual(m.labelText, ['Artists', 'Songs']);
+  assert.deepEqual(m.labelHeights, [32, 32], 'labels are 32px strips');
+  assert.deepEqual(m.labelFont, ['12px', '16px', '600', '0.96px', 'uppercase', '16px'], 'label 12/16 600, tracking 0.08em, caps, 16px inset');
+  assert.deepEqual(m.nameFont, ['17px', '22px', '600']);
+  assert.deepEqual(m.countFont, ['14px', '20px', '400']);
+  assert.deepEqual(m.chevron, [20, 20]);
+  assert.equal(m.gapCountChevron, 8, '8px between the count and the chevron');
+  assert.equal(m.divider, '1px');
+  assert.deepEqual(m.side, [16, 16], '16px side padding');
+  assert.ok(m.lastLinkBottom <= m.songsLabelTop + 1 && m.songsLabelTop < m.firstRowTop, 'ARTISTS rows, then the SONGS label, then the songs');
+  assert.equal(m.overflow, false);
+  const first = artistById.get(idOf(m.hrefs[0]));
+  assert.ok(first, 'the first artist is in the dataset');
+  assert.equal(await page.getByRole('link', { name: `${first.name}, ${countText(first.count)}`, exact: true }).count(), 1, 'the link reads "<name>, N songs"');
+  assert.equal(await page.locator(ARTIST_LINKS).first().locator(':scope > span').nth(2).textContent(), countText(first.count));
+  await input_clear(page);
+  assert.equal(await page.locator('main h2', { hasText: /^(Artists|Songs)$/ }).count(), 0, 'no labels when nothing is suggested');
+  await page.locator(INPUT).fill('xyzqq');
+  await page.getByRole('heading', { name: 'No songs found' }).waitFor();
+  assert.equal(await page.locator(ARTIST_LINKS).count(), 0);
+  assert.deepEqual(problems, [], 'no console errors');
+  await context.close();
+});
+
+async function input_clear(page) {
+  await page.locator(INPUT).fill('hotel californa');
+  // The old rows stay until the new answer arrives, so wait for the artists of the old query to go.
+  await page.locator(ARTIST_LINKS).first().waitFor({ state: 'detached' });
+  await page.locator(ROWS).first().waitFor();
+}
+
+await step('tapping an artist opens the view: 80px heading, 44x44 back button, 24/30 name, count = dataset, every song as a row; Back returns', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await open(context);
+  await page.goto(base + '/');
+  await hydrated(page);
+  await page.keyboard.type('eagl', { delay: 40 });
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  const href = await page.locator(ARTIST_LINKS).first().getAttribute('href');
+  const expected = artistById.get(idOf(href));
+  const entries = await page.evaluate(() => history.length);
+  await page.locator(ARTIST_LINKS).first().click();
+  await page.locator(HEADING).waitFor();
+  assert.equal(await page.evaluate(() => history.length), entries + 1, 'one new history entry');
+  assert.equal(new URL(page.url()).search, href);
+  assert.equal(await page.locator(INPUT).inputValue(), 'eagl', 'the box keeps its text');
+  const m = await page.evaluate(({ HEADING, ARTIST_ROWS }) => {
+    const r = (el) => el.getBoundingClientRect();
+    const cs = (el) => getComputedStyle(el);
+    const block = document.querySelector(HEADING);
+    const back = block.querySelector('button');
+    const name = block.querySelector('h2');
+    const count = block.querySelector('p');
+    const icon = back.querySelector('svg');
+    return {
+      block: [r(block).height, cs(block).borderBottomWidth, cs(block).backgroundColor],
+      back: [r(back).width, r(back).height, back.getAttribute('aria-label'), cs(back).color, r(icon).width],
+      name: [name.textContent, cs(name).fontSize, cs(name).lineHeight, cs(name).fontWeight, cs(name).color, r(name).left - r(back).right],
+      count: [count.textContent, cs(count).fontSize, cs(count).lineHeight, cs(count).color],
+      rows: document.querySelectorAll(ARTIST_ROWS).length,
+      labels: [...document.querySelectorAll('main h2')].map((h) => h.textContent),
+      hint: !!document.body.textContent.includes('Showing the top 50'),
+      focus: document.activeElement?.getAttribute('aria-label'),
+      scrollY: window.scrollY,
+      live: document.querySelector('main [role="status"]').textContent,
+      groups: document.querySelectorAll('[role="status"]').length,
+      pageBg: cs(document.body).backgroundColor,
+    };
+  }, { HEADING, ARTIST_ROWS });
+  assert.equal(m.block[0], 80, 'heading block is 80px');
+  assert.equal(m.block[1], '1px');
+  assert.equal(m.block[2], m.pageBg, 'heading block uses the page background');
+  assert.deepEqual(m.back.slice(0, 3), [44, 44, 'Back to results']);
+  assert.equal(m.back[4], 24, '24px chevron');
+  assert.equal(m.back[3], 'rgb(244, 245, 248)', 'chevron is the primary text colour');
+  assert.equal(m.name[0], expected.name);
+  assert.deepEqual(m.name.slice(1, 4), ['24px', '30px', '700']);
+  assert.equal(m.name[4], 'rgb(244, 245, 248)');
+  assert.equal(m.name[5], 8, '8px between the chevron button and the name');
+  assert.deepEqual(m.count.slice(0, 3), [countText(expected.count), '14px', '20px']);
+  assert.equal(m.count[3], 'rgb(169, 174, 189)', 'count is the secondary colour');
+  assert.equal(m.rows, expected.count, `every one of the artist's ${expected.count} songs is a row`);
+  assert.deepEqual(m.labels, [expected.name], 'no ARTISTS/SONGS labels in the view');
+  assert.equal(m.hint, false);
+  assert.equal(m.focus, `${expected.name}, ${countText(expected.count)}`, 'focus is on the heading block');
+  assert.equal(m.scrollY, 0);
+  assert.equal(m.groups, 1, 'one live region');
+  // A tap moves focus to the heading block (its name carries "<name>, N songs"), so the live region stays silent: announcing
+  // the same text twice is what QA flagged. Give it longer than the 600 ms settle delay to prove it.
+  await page.waitForTimeout(800);
+  assert.equal(await page.evaluate(() => document.querySelector('main [role="status"]').textContent), '', 'live region is silent after a tap');
+
+  await page.goBack();
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  assert.equal(new URL(page.url()).search, '?q=eagl');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'search-input', 'Back returns focus to the box');
+  await page.goForward();
+  await page.locator(HEADING).waitFor();
+  await page.getByRole('button', { name: 'Back to results' }).click();
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  assert.equal(new URL(page.url()).search, '?q=eagl');
+  assert.equal(await page.evaluate(() => history.length), entries + 1, 'the chevron goes Back; it adds no entries');
+  await context.close();
+});
+
+await step('Back puts the results where they were scrolled', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 600 } });
+  const page = await open(context);
+  await page.goto(base + '/?q=queen');
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  await page.locator(ROWS).nth(9).waitFor();
+  await page.evaluate(() => window.scrollTo(0, 130));
+  assert.equal(await page.evaluate(() => Math.round(window.scrollY)), 130);
+  await page.locator(ARTIST_LINKS).first().evaluate((a) => a.click()); // the link is under the sticky box at this scroll: click it from script
+  await page.locator(HEADING).waitFor();
+  await page.evaluate(() => window.scrollTo(0, 900));
+  await page.goBack();
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  await page.waitForFunction(() => Math.round(window.scrollY) === 130);
+  await context.close();
+});
+
+await step('editing the box in the artist view leaves it (replace, no new entry); clearing goes home', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await open(context);
+  await page.goto(base + '/?q=eagl');
+  await hydrated(page);
+  await page.locator(ARTIST_LINKS).first().click();
+  await page.locator(HEADING).waitFor();
+  const entries = await page.evaluate(() => history.length);
+  await page.locator(INPUT).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('e', { delay: 30 });
+  await page.locator(HEADING).waitFor({ state: 'detached' });
+  assert.equal(new URL(page.url()).search, '?q=eagle');
+  assert.equal(await page.evaluate(() => history.length), entries);
+  await page.locator(ARTIST_LINKS).first().click();
+  await page.locator(HEADING).waitFor();
+  await page.getByRole('button', { name: 'Clear search' }).click();
+  await page.getByText('Find your song number').waitFor();
+  assert.equal(new URL(page.url()).search, '');
+  await context.close();
+});
+
+await step('deep links: ?q=eagl&artist=<id> (and its chevron stays in the app), the dotted id b.o.b, and unknown or malformed ids are ignored', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await open(context);
+  const problems = [];
+  page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));
+  page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+
+  const eagles = artistById.get('eagles');
+  await page.goto(base + '/?q=eagl&artist=eagles');
+  await page.locator(HEADING).waitFor();
+  assert.equal(await page.locator(HEADING + ' h2').textContent(), eagles.name);
+  assert.equal(await page.locator(ARTIST_ROWS).count(), eagles.count);
+  assert.equal(await page.locator(INPUT).inputValue(), 'eagl');
+  const entries = await page.evaluate(() => history.length);
+  await page.getByRole('button', { name: 'Back to results' }).click();
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  assert.equal(new URL(page.url()).search, '?q=eagl');
+  assert.equal(await page.evaluate(() => history.length), entries, 'direct load: the chevron replaces the URL, it does not leave the app');
+  assert.equal(new URL(page.url()).origin, base);
+
+  const bob = artistById.get('b.o.b');
+  await page.goto(base + '/?q=bob&artist=b.o.b');
+  await page.locator(HEADING).waitFor();
+  assert.equal(await page.locator(HEADING + ' h2').textContent(), bob.name);
+  assert.equal(await page.locator(ARTIST_ROWS).count(), bob.count);
+  assert.equal(await page.locator(HEADING + ' p').textContent(), countText(bob.count));
+  // the rows of the first artist link round-trip: tap B.O.B from its own search
+  await page.goto(base + '/?q=b.o.b');
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  const links = await page.locator(ARTIST_LINKS).evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  assert.ok(links.some((h) => h.endsWith('artist=b.o.b')), `a link keeps the dotted id: ${links}`);
+
+  for (const id of ['nobody-at-all', '%E0%A4%A', '%', '..']) {
+    await page.goto(`${base}/?q=eagl&artist=${id}`);
+    await page.locator(ARTIST_LINKS).first().waitFor();
+    assert.equal(await page.locator(HEADING).count(), 0, `artist=${id} shows the normal results`);
+    await page.waitForFunction(() => !location.search.includes('artist='));
+    assert.equal(new URL(page.url()).search, '?q=eagl');
+  }
+  await page.goto(base + '/?q=eagl&artist='); // an empty id is simply no artist
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  assert.equal(await page.locator(HEADING).count(), 0);
+  await page.goto(base + '/?artist=nobody-at-all');
+  await page.getByText('Find your song number').waitFor();
+  assert.equal(new URL(page.url()).search, '');
+  assert.deepEqual(problems, [], 'no console errors');
+  await context.close();
+});
+
+await step('the largest artist list (568 songs) opens and scrolls top to bottom at 4x CPU with no long task; typing stays responsive', async () => {
+  const unknown = artistById.get('unknown');
+  assert.equal(unknown.count, 568);
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const page = await open(context);
+  await page.goto(base + '/?q=unknown');
+  await hydrated(page);
+  await page.locator(ARTIST_LINKS).first().waitFor();
+  await page.waitForTimeout(400);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  const m = await page.evaluate(async () => {
+    const link = document.querySelector('main section[aria-label="Artists"] a');
+    window.__m.longtasks.length = 0;
+    const t0 = performance.now();
+    link.click();
+    const painted = await new Promise((resolve) => {
+      const tick = () => {
+        if (document.querySelector('main ul[aria-label^="Songs by"] > li')) requestAnimationFrame(() => setTimeout(() => resolve(performance.now() - t0), 0));
+        else requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    const openTasks = window.__m.longtasks.map((t) => t.dur);
+    const rows = document.querySelectorAll('main ul[aria-label^="Songs by"] > li').length;
+    window.__m.longtasks.length = 0;
+    const frames = [];
+    let last = performance.now();
+    await new Promise((resolve) => {
+      const step = () => {
+        const now = performance.now();
+        frames.push(now - last);
+        last = now;
+        if (window.scrollY >= document.scrollingElement.scrollHeight - innerHeight - 1) return resolve();
+        window.scrollBy(0, 50);
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    frames.shift();
+    return { painted, rows, openTasks, scrollTasks: window.__m.longtasks.map((t) => t.dur), worstFrame: Math.max(...frames), frames: frames.length };
+  });
+  assert.equal(m.rows, 568);
+  const openWorst = Math.max(0, ...m.openTasks);
+  console.log(`     4x CPU: first rows painted ${m.painted.toFixed(0)} ms after the tap, open long tasks ${m.openTasks.length} (max ${openWorst.toFixed(0)} ms); scroll ${m.frames} frames, worst ${m.worstFrame.toFixed(0)} ms, long tasks ${m.scrollTasks.length}`);
+  assert.ok(openWorst < 150, `opening the list: longest task ${openWorst.toFixed(0)} ms`);
+  assert.equal(m.scrollTasks.length, 0, `no long task while scrolling the 568 rows (got ${m.scrollTasks.map((d) => d.toFixed(0))})`);
+  assert.ok(m.worstFrame < 100, `worst frame while scrolling ${m.worstFrame.toFixed(0)} ms`);
+
+  // Typing while the big list is open: the keystroke leaves the view; keystroke-to-next-paint stays under 100 ms.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const per = await page.evaluate(async () => {
+    const field = document.querySelector('#search-input');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    const out = [];
+    for (const text of ['unknow', 'unknown']) {
+      const t0 = performance.now();
+      setter.call(field, text);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+      out.push(performance.now() - t0);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    return out;
+  });
+  console.log(`     4x CPU: keystroke-to-next-paint with the 568-row view open ${per.map((x) => x.toFixed(0)).join('/')} ms`);
+  assert.ok(Math.max(...per) < 100, `keystroke ${Math.max(...per).toFixed(0)} ms (limit 100)`);
   await context.close();
 });
 
