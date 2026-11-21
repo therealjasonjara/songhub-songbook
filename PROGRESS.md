@@ -39,3 +39,15 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Not verified:** the cross-check shares poppler's extraction, so a poppler-level error would be invisible; no rendered-image comparison.
 - **Blockers:** none.
 
+## S01 / T003 — Artists: normalise, merge variants, split features ✅ (2026-11-21)
+
+**Goal met.** One artist entry per real artist, featured artists credited, and a review report of the decisions left to the client. S01 is complete.
+
+- **Result:** 47,399 songs, **14,482 artists** (from 15,660 printed credits), 267 auto-merged groups (spellings identical once case and punctuation are ignored), 2,083 songs listed under a featured artist as well. Featured split only on ft / ft. / feat / feat. / featuring; `&`, `+`, `,`, `and` and `with` never split. The song keeps its full printed credit.
+- **Shipped data:** `public/data/songs.json` + `artists.json`, columnar format (A-006, `src/lib/dataset.ts`), **954,892 B gzipped (~0.91 MB)** against the 1.5 MB budget. Deterministic; `build:data` fails loudly if over budget.
+- **QA:** `npm run qa` → pass (85 tests). Round-trip: all 47,399 songs reproduce exactly from the shipped files; every artist count reconciles. All 268 merged groups were inspected by eye; all 2,088 featured credits were audited. 10 mutations caught, plus the 2 gaps QA found, now covered.
+- **Fixed after QA:** `B.O.B`/`Bob` and `M.I.A.`/`Mia` had been merged by the dot-dropping rule; the client-controlled `keepSeparate` option now keeps them apart. Marker left in a few cut-off credits, a glued `Horizonft.` credit and a stray bracket were fixed.
+- **Open, client decisions (`data/reports/artists-review.md`):** (a) 150 of 960 near-match groups; (b) category names kept as artists (Unknown 568 = 438 printed + 91 printed `..` + 39 blank, Gospel, Ilocano Song, Visayan Song, Children Song, Traditional); (c) 39 `with` credits not split; (d) 428 truncated credits; (e) edge cases; (f) 32 merged-by-rule groups to confirm. `Beatles` and `The Beatles` stay separate by the conservative rule.
+- **Notes for later tickets:** artist ids can contain dots (`b.o.b`), so routing and URLs must cope (T008). `Bury It feat. Hayley Williams feat. ...` keeps the second cut-off marker whole.
+- **Blockers:** none.
+

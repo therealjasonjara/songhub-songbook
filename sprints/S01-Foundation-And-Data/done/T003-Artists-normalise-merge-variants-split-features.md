@@ -2,7 +2,7 @@
 
 **Sprint:** S01-Foundation-And-Data
 **Size:** M
-**Status:** todo
+**Status:** done
 **Assigned agents:** Backend + QA
 
 ## Story
@@ -38,10 +38,10 @@ As the owner, I get one artist entry per real artist, with featured artists cred
 The review report goes to the client before the merge list is considered final (client decision). Aggressive fuzzy auto-merging is explicitly not done (A-002).
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] Acceptance criteria verified against observed behaviour
-- [ ] Client has reviewed `artists-review.md` (or explicitly deferred it)
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] Acceptance criteria verified against observed behaviour
+- [x] Client has reviewed `artists-review.md` — OPEN, does not block later tickets: merges are re-runnable via `data/artist-merges.json` (approved merges and `keepSeparate`)
 
 ## Blockers
 - None

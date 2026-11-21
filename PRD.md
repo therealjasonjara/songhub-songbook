@@ -29,7 +29,12 @@ Built once by the import script, shipped as static JSON, loaded by the browser.
 | Artist | `id` (stable slug), `name` (canonical display name), `aliases` (other spellings merged in), `count` (songs listed, including features) | songs via `Song.ar` |
 | Import report (not shipped) | rows parsed, rows rejected with page/column and raw text, rows reassembled from wrapped lines, duplicate numbers, artist-merge candidates needing review | — |
 
-Dataset files (compact arrays to keep size small) live in `public/data/`. The source PDF is **not** committed.
+Dataset files live in `public/data/` (built by `npm run build:data`, see A-006). The source PDF is **not** committed.
+
+- `songs.json`: `{"v":1,"n":[...],"t":[...],"a":[...],"ar":[...]}`. Parallel arrays, one slot per song. `n` song number, `t` title as printed, `a` artist credit as printed (may be an empty string, 39 songs), `ar[i]` index into the artists array: a bare number for one artist, a list for several (main artist first, then featured artists). Every song has at least one artist (an empty credit is listed under `Unknown`).
+- `artists.json`: `{"v":1,"artists":[[id,name,aliases,count],...]}`, ordered by `count` descending. `id` stable slug of the normalised canonical name; `name` canonical display name (most frequent spelling); `aliases` the other spellings merged in (can be empty); `count` songs listed under the artist, including features.
+- `src/lib/dataset.ts` parses both files into `Song { n, t, a, ar: id[] }` and `Artist { id, name, aliases, count }`.
+- `data/artist-merges.json`: client-approved extra merges (default `[]`). `data/reports/artists-review.md`: near-matches, category-like names, `with` credits, truncated credits and unsplit featured markers for the client to review.
 
 ---
 
