@@ -79,3 +79,16 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Cheap follow-up for T006/T009:** a preload hint so the data download starts at page load, not after hydration.
 - **Blockers:** none.
 
+## S03 / T006 — App shell: header, theme and search box ✅ (2026-11-21)
+
+**Goal met.** The first real screens: header, sticky search box, theme toggle and the pre-typing home state, built to `docs/SHARED_COMPONENTS.md`.
+
+- **Built:** 56px header (accent note, `SongHub` 800 + ` Songbook` 400, one 44x44 sun/moon toggle, nothing else); sticky 72px strip with the 56px field (muted magnifier, 48x48 clear X fully inside the field, `inputmode=search`, autofocus, accent focus ring, native cancel button hidden); dark by default regardless of the phone's setting, toggle switches for the session only (nothing stored); `?q=` mirrored with `replaceState` and restored on reload and back; inline SVG icons (no icon font); the home copy exactly per the spec. None of the known Stitch deviations were copied.
+- **Visual check (recorded as the ticket asks):** screenshots at 390 px, dark and light, in `docs/design/built/`, reviewed by eye; header and field match the approved screens 2 and 6; the idle dark border after the change was also viewed.
+- **QA:** `npm run qa` → pass (220 tests); `npm run build` and `npm run e2e:smoke` pass. An independent Playwright pass measured the spec table (header 56, strip 72, field 56, radius 16, clear 48, colours equal the spec hexes in both themes, contrast meets the table) at 320 / 360 / 390 / 430 / 1280 and landscape: no horizontal overflow. axe-core: 0 violations in both themes. Hostile and malformed `?q=` values (script tags, bad percent-encoding, 5,000 characters) never crash and render as text.
+- **Preload (A-009):** a preload hint starts the data download at page load: time to ready on Slow 4G 10.3 s to 6.6 s (-35% in the agent's run, -9% vs A-008 in QA's). Cost: a harmless second conditional request (200 + 304 per file) and a console 'preloaded but not used' warning.
+- **Fixed after QA:** at 4x text size the wordmark ran into the toggle (35 px overflow). The header is now `min-h-14` and the wordmark may wrap (56 px at normal size; 112 px with a 16 px gap at 4x). A test now pins the rule that hides the browser's own search clear button.
+- **Client decision (A-010):** the dark idle border is raised from `#2A2E3B` (1.41:1) to `#6B7083` (3.89:1 against the page) to meet the 3:1 non-text guideline; the spec is updated.
+- **Not verified, open:** real phone, iOS Safari, Firefox/WebKit (the native cancel-button hiding was checked in Chromium only), the on-screen keyboard, real OS text-size scaling, real Vercel headers.
+- **Blockers:** none.
+

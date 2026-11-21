@@ -2,7 +2,7 @@
 
 **Sprint:** S03-Search-UI
 **Size:** M
-**Status:** todo
+**Status:** done
 **Assigned agents:** Design + Frontend + QA
 
 ## Story
@@ -37,11 +37,11 @@ As a guest, I see the SongHub header and a big search box that is ready to type 
 Check the build visually at 390px wide in both themes, not only by tests.
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] `npm run qa:full` (UI tickets)
-- [ ] Acceptance criteria verified against observed behaviour
-- [ ] Visual check at 390px in dark and light recorded in PROGRESS
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] `npm run qa:full` (UI tickets)
+- [x] Acceptance criteria verified against observed behaviour
+- [x] Visual check at 390px in dark and light recorded in PROGRESS
 
 ## Blockers
 - None

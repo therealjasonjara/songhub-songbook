@@ -149,15 +149,15 @@ async function appRun({ cpu, net, noWorker }) {
   });
   await page.goto(base + '/', { waitUntil: 'commit' });
   const origin = await page.evaluate(() => performance.timeOrigin);
-  await page.waitForSelector('#search-probe-input');
+  await page.waitForSelector('#search-input');
   // Hydrated = React has attached its props to the input (before that, typing is not wired to anything).
-  await page.waitForFunction(() => { const el = document.querySelector('#search-probe-input'); return !!el && Object.keys(el).some((k) => k.startsWith('__reactProps')); });
+  await page.waitForFunction(() => { const el = document.querySelector('#search-input'); return !!el && Object.keys(el).some((k) => k.startsWith('__reactProps')); });
   await page.evaluate(() => { window.__m.fullTarget = "california"; window.__m.typeStart = performance.now(); });
-  await page.click('#search-probe-input');
+  await page.click('#search-input');
   await page.keyboard.type(SEARCH_TEXT, { delay: 60 });
   // wait for results of the full query (or give up after 60 s)
-  await page.waitForFunction(() => window.__m.fullLi !== null, null, { timeout: 90_000 }).catch(() => {});
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid="probe-numbers"] li').length > 0, null, { timeout: 5_000 }).catch(() => {});
+  // T006 removed the probe list (rows come with T007), so "first rows" is not observable now: wait for the index instead.
+  await page.waitForFunction(() => window.__m.ready !== null, null, { timeout: 90_000 }).catch(() => {});
   const early = await page.evaluate(() => JSON.parse(JSON.stringify(window.__m)));
   const loadEvent = await page.evaluate(() => { const [n] = performance.getEntriesByType('navigation'); return n ? n.loadEventEnd : null; });
 
@@ -169,7 +169,7 @@ async function appRun({ cpu, net, noWorker }) {
     const queries = ['yesterday', 'mr brightside', 'eagles', 'hotel californa', 'the', 'love'];
     let n = 0;
     for (const q of queries) {
-      await page.fill('#search-probe-input', '');
+      await page.fill('#search-input', '');
       for (const ch of q) {
         if (n >= 50) break;
         await page.keyboard.type(ch, { delay: 0 });

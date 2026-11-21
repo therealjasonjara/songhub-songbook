@@ -8,7 +8,7 @@ Contract every screen and every UI ticket must match. Mobile 390x844. Font: Inte
 | page background | #0E0F14 | #FAF8F5 |
 | surface / pressed row | #181A22 | #FFFFFF (pressed #F1EDE6) |
 | input background | #20232E | #FFFFFF |
-| input border idle | #2A2E3B 1px | #6B7083 1px |
+| input border idle | #6B7083 1px (was #2A2E3B; raised 2026-11-21 for 3:1 non-text contrast, client decision) | #6B7083 1px |
 | input border focus | #FFC933 2px | #9A4300 2px |
 | divider | #2A2E3B 1px | #E3DED6 1px |
 | text primary | #F4F5F8 | #14151A |
