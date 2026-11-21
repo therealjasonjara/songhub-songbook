@@ -2,7 +2,7 @@
 
 **Sprint:** S01-Foundation-And-Data
 **Size:** M
-**Status:** todo
+**Status:** done
 **Assigned agents:** Backend + QA
 
 ## Story
@@ -38,11 +38,11 @@ As the owner, I can run one command on the SongHub PDF and get every song's numb
 Spot-check a sample of pages against the PDF by eye before closing the ticket and record which pages in PROGRESS.
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] Acceptance criteria verified against observed behaviour
-- [ ] Row count matches the PDF within the reported, explained rejects
-- [ ] A hand-checked sample of at least 5 pages matches the output exactly
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] Acceptance criteria verified against observed behaviour
+- [x] Row count matches the PDF within the reported, explained rejects
+- [x] A hand-checked sample of at least 5 pages matches the output exactly
 
 ## Blockers
 - None

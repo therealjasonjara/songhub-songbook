@@ -27,7 +27,7 @@ Built once by the import script, shipped as static JSON, loaded by the browser.
 |--------|-----------|-----------|
 | Song | `n` (number, int), `t` (title as printed), `a` (artist credit as printed), `ar` (artist ids this song is listed under) | `ar` → Artist.id |
 | Artist | `id` (stable slug), `name` (canonical display name), `aliases` (other spellings merged in), `count` (songs listed, including features) | songs via `Song.ar` |
-| Import report (not shipped) | rows parsed, rows rejected with page/line, duplicate numbers, artist-merge candidates needing review | — |
+| Import report (not shipped) | rows parsed, rows rejected with page/column and raw text, rows reassembled from wrapped lines, duplicate numbers, artist-merge candidates needing review | — |
 
 Dataset files (compact arrays to keep size small) live in `public/data/`. The source PDF is **not** committed.
 
@@ -84,6 +84,7 @@ Single page, static export.
 - `scripts/import/` — the PDF import and normalisation scripts (Node, TypeScript).
 - `data/source/` — the source PDF, gitignored.
 - `public/data/` — shipped dataset files.
+- `data/work/` — intermediate import output (`songs.raw.json`: `n`, `t`, `a` plus `page`, `col` for traceability), gitignored.
 - `data/reports/` — import and merge-review reports (committed, so changes are reviewable).
 - Re-import runbook in `README.md` (T011).
 

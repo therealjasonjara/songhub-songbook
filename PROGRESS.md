@@ -26,3 +26,16 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 - **Warnings recorded, not hidden:** `npm ci` prints three non-fatal peer-dependency warnings (eslint 10 vs the ^9 cap in three plugins under `eslint-config-next`). The first build needs network to fetch Inter.
 - **Deferred:** Playwright to T009. Light theme was checked by forcing the attribute; no toggle exists until T006.
 - **Blockers:** none.
+
+## S01 / T002 — Import the PDF into a clean song list ✅ (2026-11-21)
+
+**Goal met.** `npm run import` turns the SongHub PDF into a deterministic songs file with a report of everything it did and did not read.
+
+- **Result on the supplied PDF:** 384 pages, **47,399 rows**, 0 rejects, 0 duplicate numbers (numbers 1 to 91,718, each exactly once). 1,616 rows were reassembled from wrapped lines. 39 rows have a genuinely blank artist; 458 values end in `...` because the PDF itself truncates them.
+- **Method:** word positions from poppler (no new dependency, Node's built-in TypeScript support). Rule and measured thresholds in `DECISIONS.md` (A-005). Output is byte-identical on repeat runs.
+- **QA:** `npm run qa` → pass (3 files, 32 tests). Independent cross-check by a different method (`pdftotext -layout`, text only, no geometry): all 47,399 rows agree, 0 disagreements. About 25 wrapped and edge rows read by eye on pages incl. 1, 337 and 384 (the original agent also reviewed pages 1, 2, 7, 62, 100, 150, 192, 250, 300). Error paths (no PDF, non-PDF, missing poppler) fail clearly with no partial output.
+- **Gap found and closed:** mutation checks showed nothing tested that the report lists rejects or flags an unbalanced count (the ticket's "never drop silently" requirement). Two tests added; both mutations now fail them.
+- **Source quirks for later tickets:** credits mix `ft`, `ft.`, `Feat.`; `¬` damage in six rows; single letters separated by spaces (`A B C`, `U 2`) kept as printed. All recorded in A-005.
+- **Not verified:** the cross-check shares poppler's extraction, so a poppler-level error would be invisible; no rendered-image comparison.
+- **Blockers:** none.
+
