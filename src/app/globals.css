@@ -1,0 +1,66 @@
+@import 'tailwindcss';
+
+/* Design tokens: docs/SHARED_COMPONENTS.md. Dark is the default; light overrides. */
+:root {
+  --bg: #0e0f14;
+  --surface: #181a22;
+  --surface-pressed: #181a22;
+  --input-bg: #20232e;
+  --input-border: #2a2e3b;
+  --input-border-focus: #ffc933;
+  --divider: #2a2e3b;
+  --text: #f4f5f8;
+  --text-secondary: #a9aebd;
+  --text-muted: #8a90a3;
+  --accent: #ffc933;
+  --on-accent: #1a1300;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --surface-pressed: #f1ede6;
+  --input-bg: #ffffff;
+  --input-border: #6b7083;
+  --input-border-focus: #9a4300;
+  --divider: #e3ded6;
+  --text: #14151a;
+  --text-secondary: #4b5063;
+  --text-muted: #6b7083;
+  --accent: #9a4300;
+  --on-accent: #ffffff;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-pressed: var(--surface-pressed);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-input-border-focus: var(--input-border-focus);
+  --color-divider: var(--divider);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --radius-input: 16px;
+  --radius-button: 12px;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
