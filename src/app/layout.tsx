@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { preload } from 'react-dom';
 import { DATA_URLS } from '@/lib/search/protocol';
+import { buildMetadata, buildWebSiteJsonLd, serializeJsonLd } from '@/lib/seo';
 import './globals.css';
 
 const inter = Inter({
@@ -12,10 +13,7 @@ const inter = Inter({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: 'SongHub Songbook',
-  description: 'Find your song number.',
-};
+export const metadata: Metadata = buildMetadata();
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -32,7 +30,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   preload(DATA_URLS.artists, { as: 'fetch', crossOrigin: 'anonymous' });
   return (
     <html lang="en" className={inter.variable} data-theme="dark">
-      <body>{children}</body>
+      <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildWebSiteJsonLd()) }} />
+        {children}
+      </body>
     </html>
   );
 }

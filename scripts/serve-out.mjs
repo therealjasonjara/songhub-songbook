@@ -1,5 +1,5 @@
 /**
- * Tiny static server for the exported site (`out/`), for measuring and for the e2e smoke test.
+ * Tiny static server for the exported site (`out/`), for measuring and for the Playwright e2e suite (playwright.config.ts `webServer`).
  * Behaves like a CDN: compresses text responses with gzip (compressed once, then served from memory),
  * sends ETag and Cache-Control (same rules as vercel.json), answers 304 on a matching If-None-Match.
  *
@@ -21,6 +21,7 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.png': 'image/png',
   '.woff2': 'font/woff2',
 };
 const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.txt', '.svg']);
