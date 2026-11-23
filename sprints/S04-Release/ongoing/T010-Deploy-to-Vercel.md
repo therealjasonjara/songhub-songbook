@@ -2,7 +2,7 @@
 
 **Sprint:** S04-Release
 **Size:** S
-**Status:** todo
+**Status:** ongoing
 **Assigned agents:** Frontend + QA
 
 ## Story

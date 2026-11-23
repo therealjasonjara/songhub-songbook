@@ -44,14 +44,14 @@ test.describe('head tags', () => {
     }
   });
 
-  test('lang is en; the viewport meta allows zoom; the robots meta says index, follow', async ({ page }) => {
+  test('lang is en; the viewport meta allows zoom; there is exactly one robots meta and it says noindex, nofollow', async ({ page }) => {
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
     const viewport = await meta(page, 'meta[name="viewport"]');
     expect(viewport).toHaveLength(1);
     expect(viewport[0]).toContain('width=device-width');
     expect(viewport[0]).toContain('initial-scale=1');
     expect(viewport[0], 'zoom is not disabled').not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale\s*=\s*1(\.0)?\b/);
-    expect(await meta(page, 'meta[name="robots"]')).toEqual(['index, follow']);
+    expect(await meta(page, 'meta[name="robots"]')).toEqual(['noindex, nofollow']);
   });
 
   test('theme-color exists (dark), and the toggle updates it to light and back', async ({ page }) => {
@@ -81,17 +81,8 @@ test.describe('head tags', () => {
     }
   });
 
-  test('one ld+json block parses as a schema.org WebSite whose SearchAction is the real /?q= deep link', async ({ page }) => {
-    const blocks = await page.locator('script[type="application/ld+json"]').evaluateAll((els) => els.map((el) => el.textContent ?? ''));
-    expect(blocks).toHaveLength(1);
-    const data = JSON.parse(blocks[0] ?? '') as { '@context': string; '@type': string; name: string; url: string; inLanguage: string; potentialAction: { '@type': string; target: { urlTemplate: string } } };
-    expect(data['@context']).toBe('https://schema.org');
-    expect(data['@type']).toBe('WebSite');
-    expect(data.name.length).toBeGreaterThan(0);
-    expect(data.url).toMatch(/^https?:\/\/[^/]+\/$/);
-    expect(data.inLanguage).toBe('en');
-    expect(data.potentialAction['@type']).toBe('SearchAction');
-    expect(data.potentialAction.target.urlTemplate).toMatch(/\/\?q=\{search_term_string\}$/);
+  test('no structured data: nothing advertises the site to search engines', async ({ page }) => {
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   });
 });
 
@@ -111,12 +102,22 @@ test.describe('static files', () => {
     });
   }
 
-  test('robots.txt allows everything and names no sitemap (one page)', async ({ request }) => {
+  test('robots.txt allows crawling (link previews need it) and names no sitemap; noindex does the hiding', async ({ request }) => {
     const text = await (await request.get('/robots.txt')).text();
     expect(text).toMatch(/^User-agent: \*$/m);
-    expect(text).toMatch(/^Allow: \/$/m);
-    expect(text).not.toMatch(/^Disallow: \/\s*$/m);
+    expect(text).toMatch(/^Allow: \/\s*$/m);
+    expect(text).not.toMatch(/^Disallow:\s*\S/m);
+    expect(text).not.toMatch(/^Sitemap:/im);
   });
+
+  // The headers come from vercel.json (scripts/serve-out.mjs reads it), so this checks the rule that ships.
+  for (const path of ['/', '/data/songs.json', '/og.png', '/robots.txt']) {
+    test(`${path} carries X-Robots-Tag: noindex, nofollow and is still served 200`, async ({ request }) => {
+      const res = await request.get(path);
+      expect(res.status()).toBe(200);
+      expect(res.headers()['x-robots-tag']).toBe('noindex, nofollow');
+    });
+  }
 
   /** width and height from a PNG's IHDR chunk (bytes 16..23, big endian), after the 8-byte signature. */
   function pngSize(png: Buffer): { width: number; height: number; isPng: boolean } {

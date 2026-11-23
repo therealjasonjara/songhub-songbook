@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { preload } from 'react-dom';
 import { DATA_URLS } from '@/lib/search/protocol';
-import { buildMetadata, buildWebSiteJsonLd, serializeJsonLd } from '@/lib/seo';
+import { buildMetadata } from '@/lib/seo';
 import './globals.css';
 
 const inter = Inter({
@@ -31,7 +31,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable} data-theme="dark">
       <body>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildWebSiteJsonLd()) }} />
         {children}
       </body>
     </html>

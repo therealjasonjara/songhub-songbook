@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HOME_SCREEN_TITLE, OG_IMAGE, buildMetadata, buildWebSiteJsonLd, resolveSiteUrl, serializeJsonLd } from '@/lib/seo';
+import { HOME_SCREEN_TITLE, OG_IMAGE, buildMetadata, resolveSiteUrl } from '@/lib/seo';
 
 describe('site URL', () => {
   it('uses the Vercel production host, with https', () => {
@@ -18,8 +18,8 @@ describe('site URL', () => {
 
 describe('metadata', () => {
   const md = buildMetadata(new URL('https://songs.example.com'));
-  it('is indexable, canonical to the root, with a card image of 1200x630', () => {
-    expect(md.robots).toEqual({ index: true, follow: true });
+  it('is hidden from search engines (A-015), canonical to the root, with a card image of 1200x630', () => {
+    expect(md.robots).toEqual({ index: false, follow: false });
     expect(md.alternates?.canonical).toBe('/');
     expect(String(md.metadataBase)).toBe('https://songs.example.com/');
     expect(OG_IMAGE).toMatchObject({ width: 1200, height: 630, url: '/og.png' });
@@ -121,15 +121,20 @@ describe('the brand assets draw the header icon', () => {
   });
 });
 
-describe('JSON-LD', () => {
-  it('has absolute URLs and a search template that matches the /?q= deep link', () => {
-    const ld = buildWebSiteJsonLd(new URL('https://songs.example.com'));
-    expect(ld.url).toBe('https://songs.example.com/');
-    expect(ld.potentialAction.target.urlTemplate).toBe('https://songs.example.com/?q={search_term_string}');
-    expect(ld.inLanguage).toBe('en');
+describe('hidden from search engines (A-015)', () => {
+  it('vercel.json sends X-Robots-Tag: noindex, nofollow for every path', () => {
+    const rules = (JSON.parse(readFileSync('vercel.json', 'utf8')) as { headers: { source: string; headers: { key: string; value: string }[] }[] }).headers;
+    const rule = rules.find((r) => r.headers.some((h) => h.key === 'X-Robots-Tag'));
+    expect(rule?.source).toBe('/(.*)');
+    expect(rule?.headers.find((h) => h.key === 'X-Robots-Tag')?.value).toBe('noindex, nofollow');
   });
-  it('escapes < so nothing can close the script tag', () => {
-    expect(serializeJsonLd({ a: '</script><b>' })).not.toContain('<');
-    expect(JSON.parse(serializeJsonLd({ a: '</script>' }))).toEqual({ a: '</script>' });
+  it('robots.txt allows crawling so link-preview bots can fetch the page; noindex does the hiding', () => {
+    const text = readFileSync('public/robots.txt', 'utf8');
+    expect(text).toMatch(/^User-agent: \*$/m);
+    expect(text).toMatch(/^Allow: \/\s*$/m);
+    expect(text).not.toMatch(/^Disallow:\s*\S/m); // a Disallow would stop Slack and others from building the preview
+  });
+  it('no structured data is injected: a SearchAction would advertise the site to search engines', () => {
+    expect(readFileSync('src/app/layout.tsx', 'utf8')).not.toContain('ld+json');
   });
 });

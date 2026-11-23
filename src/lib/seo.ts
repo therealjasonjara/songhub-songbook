@@ -29,7 +29,8 @@ export function buildMetadata(base: URL = resolveSiteUrl()): Metadata {
     // this is not an installable app.
     other: { 'apple-mobile-web-app-title': HOME_SCREEN_TITLE },
     alternates: { canonical: '/' },
-    robots: { index: true, follow: true },
+    // Public but hidden from search engines (A-015). The same decision lives in vercel.json (X-Robots-Tag) and public/robots.txt.
+    robots: { index: false, follow: false },
     icons: {
       icon: [
         { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -53,27 +54,4 @@ export function buildMetadata(base: URL = resolveSiteUrl()): Metadata {
       images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }],
     },
   };
-}
-
-/** schema.org WebSite with a SearchAction that matches the real `/?q=` deep link. */
-export function buildWebSiteJsonLd(base: URL = resolveSiteUrl()) {
-  const origin = base.origin;
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: SITE_NAME,
-    url: `${origin}/`,
-    description: SITE_DESCRIPTION,
-    inLanguage: 'en',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: { '@type': 'EntryPoint', urlTemplate: `${origin}/?q={search_term_string}` },
-      'query-input': 'required name=search_term_string',
-    },
-  };
-}
-
-/** JSON for a <script type="application/ld+json">: `<` is escaped so no value can close the tag. */
-export function serializeJsonLd(data: unknown): string {
-  return JSON.stringify(data).replace(/</g, '\\u003c');
 }

@@ -34,3 +34,7 @@ The full re-import and deploy runbook is added in ticket T011.
 ## Commit rules
 
 This repository ships as the client's own work. No commit message, pull request, issue comment, tag, release note, code comment or document may carry AI attribution: no AI co-author trailer, no "generated with" footer, no assistant or model names.
+
+## Search visibility
+
+The site is public but hidden from search engines (DECISIONS.md, A-015): `noindex, nofollow` in the page head and in an `X-Robots-Tag` header (`vercel.json`), and `public/robots.txt` allows crawling on purpose (`Disallow: /` would stop Slack and some other apps from building a link preview). This is hiding, not protection: anyone with the link can use the site and fetch `/data/*.json`. To make it indexable, remove the noindex in those two places (listed in A-015).
