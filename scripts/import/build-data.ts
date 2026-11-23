@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { encodeDataset } from '../../src/lib/dataset.ts';
-import { buildArtists, type MergeEntry, type RawSong } from './artists.ts';
+import { contentId } from './dataset-id.ts';
+import { buildArtists, type RawSong } from './artists.ts';
+import { readMergesFile } from './merges-file.ts';
 import { findNearMatches, renderReview } from './review.ts';
 
 function main(): number {
@@ -14,18 +16,17 @@ function main(): number {
   }
   const rows = JSON.parse(readFileSync(rawPath, 'utf8')) as RawSong[];
   const mergesPath = join(root, 'data', 'artist-merges.json');
-  let merges: MergeEntry[] = [];
-  if (existsSync(mergesPath)) {
-    const parsed: unknown = JSON.parse(readFileSync(mergesPath, 'utf8'));
-    if (!Array.isArray(parsed)) {
-      console.error('data/artist-merges.json must be a JSON list.');
-      return 1;
-    }
-    merges = parsed as MergeEntry[];
+  const file = readMergesFile(mergesPath);
+  if (file.kind === 'error') {
+    console.error(file.message);
+    return 1;
   }
+  const merges = file.merges;
+  const mergesMissing = file.kind === 'missing';
+  if (file.kind === 'missing') console.warn(file.warning);
 
   const { dataset, diagnostics } = buildArtists(rows, merges);
-  const { songsJson, artistsJson } = encodeDataset(dataset);
+  const { songsJson, artistsJson, id } = encodeDataset(dataset, contentId);
   const gz = (s: string) => gzipSync(Buffer.from(s), { level: 9 }).length;
   const sizes = {
     songsRaw: Buffer.byteLength(songsJson),
@@ -41,9 +42,10 @@ function main(): number {
   mkdirSync(reportDir, { recursive: true });
   writeFileSync(join(outDir, 'songs.json'), songsJson);
   writeFileSync(join(outDir, 'artists.json'), artistsJson);
-  writeFileSync(join(reportDir, 'artists-review.md'), renderReview(dataset.artists, diagnostics, near, sizes));
+  writeFileSync(join(reportDir, 'artists-review.md'), renderReview(dataset.artists, diagnostics, near, sizes, { mergesFileMissing: mergesMissing }));
 
   const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
+  console.log(`Dataset id ${id}.`);
   console.log(`Songs: ${dataset.songs.length}. Artists: ${diagnostics.artistsAfterMerge} (spellings ${diagnostics.distinctSpellings}, after auto-merge ${diagnostics.artistsBeforeMerge}).`);
   console.log(`Songs with featured artists: ${diagnostics.songsWithFeatured}. Near-match groups: ${near.length}.`);
   console.log(`songs.json ${kb(sizes.songsRaw)} (${kb(sizes.songsGzip)} gz), artists.json ${kb(sizes.artistsRaw)} (${kb(sizes.artistsGzip)} gz), total ${kb(sizes.songsGzip + sizes.artistsGzip)} gz`);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { buildArtists, type RawSong } from '../../scripts/import/artists.ts';
 import { encodeDataset, parseDataset } from '../../src/lib/dataset.ts';
+import { contentId } from '../../scripts/import/dataset-id.ts';
 
 const RAW = 'data/work/songs.raw.json';
 const present = existsSync(RAW);
@@ -28,13 +29,13 @@ describe.skipIf(!present)('artists on the real import', () => {
     expect(songs.every((s, i) => s.a === (rows[i] as RawSong).a)).toBe(true);
   });
   it('is deterministic and round-trips through the shipped format', () => {
-    const a = encodeDataset(first.dataset);
-    expect(encodeDataset(buildArtists(rows).dataset)).toEqual(a);
+    const a = encodeDataset(first.dataset, contentId);
+    expect(encodeDataset(buildArtists(rows).dataset, contentId)).toEqual(a);
     expect(parseDataset(a.songsJson, a.artistsJson)).toEqual(first.dataset);
   });
   it('stays under the 1.5 MB gzipped budget', async () => {
     const { gzipSync } = await import('node:zlib');
-    const e = encodeDataset(first.dataset);
+    const e = encodeDataset(first.dataset, contentId);
     expect(gzipSync(e.songsJson, { level: 9 }).length + gzipSync(e.artistsJson, { level: 9 }).length).toBeLessThan(1.5 * 1024 * 1024);
   });
 });

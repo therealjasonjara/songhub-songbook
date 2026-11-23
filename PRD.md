@@ -31,8 +31,9 @@ Built once by the import script, shipped as static JSON, loaded by the browser.
 
 Dataset files live in `public/data/` (built by `npm run build:data`, see A-006). The source PDF is **not** committed.
 
-- `songs.json`: `{"v":1,"n":[...],"t":[...],"a":[...],"ar":[...]}`. Parallel arrays, one slot per song. `n` song number, `t` title as printed, `a` artist credit as printed (may be an empty string, 39 songs), `ar[i]` index into the artists array: a bare number for one artist, a list for several (main artist first, then featured artists). Every song has at least one artist (an empty credit is listed under `Unknown`).
-- `artists.json`: `{"v":1,"artists":[[id,name,aliases,count],...]}`, ordered by `count` descending. `id` stable slug of the normalised canonical name; `name` canonical display name (most frequent spelling); `aliases` the other spellings merged in (can be empty); `count` songs listed under the artist, including features.
+- `songs.json`: `{"v":2,"id":"<16 hex>","n":[...],"t":[...],"a":[...],"ar":[...]}`. Parallel arrays, one slot per song. `n` song number, `t` title as printed, `a` artist credit as printed (may be an empty string, 39 songs), `ar[i]` index into the artists array: a bare number for one artist, a list for several (main artist first, then featured artists). Every song has at least one artist (an empty credit is listed under `Unknown`).
+- `artists.json`: `{"v":2,"id":"<16 hex>","artists":[[id,name,aliases,count],...]}`, ordered by `count` descending. `id` stable slug of the normalised canonical name; `name` canonical display name (most frequent spelling); `aliases` the other spellings merged in (can be empty); `count` songs listed under the artist, including features.
+- `id` (both files): the same 16-hex content hash of the songs and artists payloads, computed by `build:data`. The browser loads the two files separately, so it refuses a pair whose ids differ, a missing id or a v1 file (the load error and retry path), instead of showing wrong artist attributions.
 - `src/lib/dataset.ts` parses both files into `Song { n, t, a, ar: id[] }` and `Artist { id, name, aliases, count }`.
 - `data/artist-merges.json`: client-approved extra merges (default `[]`). `data/reports/artists-review.md`: near-matches, category-like names, `with` credits, truncated credits and unsplit featured markers for the client to review.
 
@@ -76,8 +77,8 @@ Single page, static export.
 - Tapping a song row does nothing. Tapping an artist opens the artist view; the back chevron returns to the previous results.
 
 ### Performance budget
-- The dataset must be usable fast on a mid-range phone on a venue connection. Target: first results within **2 s** of load on a throttled mid-range mobile profile, and each keystroke's results within **100 ms**. Dataset transfer budget: under **1.5 MB gzipped**.
-- Search index is built in a Web Worker so typing never blocks. If measured index build time exceeds the budget, switch to a pre-built serialised index (T005 decides, with numbers).
+- The dataset must be usable fast on a mid-range phone on a venue connection. Target: first results within **2 s after the dataset has arrived** (compute on a throttled mid-range mobile profile); download time is first-visit only and depends on the connection, about **0.74 MB over Brotli / 0.95 MB gzipped**; keystroke results within **100 ms**. Dataset transfer budget: under **1.5 MB gzipped**. The measured numbers are listed in A-008.
+- Search index is built in a Web Worker so typing never blocks. T005 measured it (A-008): the runtime build stays, a prebuilt index is slower end to end; the dataset arrival time on slow networks is the open point.
 
 ### Theme
 - Dark by default. A sun/moon toggle switches to light for the session. Tokens exactly as in `docs/SHARED_COMPONENTS.md`; never Stitch's drifted token values.

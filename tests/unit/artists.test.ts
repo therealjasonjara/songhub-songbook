@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { assignIds, buildArtists, cleanName, parseCredit, type MergeEntry, type RawSong } from '../../scripts/import/artists.ts';
 import { findNearMatches, editDistance, mergedNeedingConfirmation, needsConfirmation } from '../../scripts/import/review.ts';
 import { encodeDataset } from '../../src/lib/dataset.ts';
+import { contentId } from '../../scripts/import/dataset-id.ts';
 
 const rows = (...credits: string[]): RawSong[] => credits.map((a, i) => ({ n: i + 1, t: `T${i + 1}`, a }));
 const byName = (r: ReturnType<typeof buildArtists>, name: string) => r.dataset.artists.find((a) => a.name === name);
@@ -108,8 +109,8 @@ describe('merging (A-002)', () => {
   });
   it('produces byte-identical output across runs', () => {
     const input = rows('A ft. B', 'a', 'B', 'The X', 'x', 'Y & Z');
-    const one = encodeDataset(buildArtists(input).dataset);
-    const two = encodeDataset(buildArtists(input).dataset);
+    const one = encodeDataset(buildArtists(input).dataset, contentId);
+    const two = encodeDataset(buildArtists(input).dataset, contentId);
     expect(one).toEqual(two);
   });
 });
@@ -147,8 +148,8 @@ describe('approved merges (data/artist-merges.json)', () => {
       { names: ['Beatles'], into: 'The Beatles' },
       { names: ['The Beatles'], into: 'Beatles' },
     ];
-    const a = encodeDataset(buildArtists(input, rules).dataset);
-    expect(encodeDataset(buildArtists(input, rules).dataset)).toEqual(a);
+    const a = encodeDataset(buildArtists(input, rules).dataset, contentId);
+    expect(encodeDataset(buildArtists(input, rules).dataset, contentId)).toEqual(a);
   });
 });
 
@@ -247,7 +248,7 @@ describe('keepSeparate', () => {
     expect(idOf(a, 'Bob')).toBe('bob');
     expect(idOf(b, 'B.O.B.')).toBe('b.o.b');
     expect(idOf(b, 'Bob')).toBe('bob');
-    expect(encodeDataset(buildArtists(input, rule).dataset)).toEqual(encodeDataset(a.dataset));
+    expect(encodeDataset(buildArtists(input, rule).dataset, contentId)).toEqual(encodeDataset(a.dataset, contentId));
   });
   it('accepts ids, and an id selects the remaining spellings', () => {
     const r = buildArtists(rows("Guns N' Roses", 'Guns N Roses', 'Guns N Roses'), [{ keepSeparate: ['guns-n-roses', "Guns N' Roses"] }]);
