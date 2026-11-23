@@ -9,5 +9,12 @@ out
 next-env.d.ts
 # source PDF and other raw inputs are never committed
 data/source/
+# intermediate import output (T003 writes the shipped files to public/data/)
+data/work/
 # tooling config
 .claude/
+.measure/
+
+test-results/
+playwright-report/
+.env*
