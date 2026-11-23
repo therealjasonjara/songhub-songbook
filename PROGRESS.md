@@ -154,3 +154,21 @@ End state: a working mobile-first search app. A guest types a title (typos forgi
 - **Not verified:** real phone and Safari, real Slack/WhatsApp/Facebook/X rendering, other regions, Vercel bot protection under real bot IPs.
 - **Blockers:** none.
 
+## S04 / T011 — Runbook: how to re-import a new PDF ✅ (2026-11-24)
+
+**Goal met.** The owner can update the song book from a new SongHub PDF with a few commands and a README written for a non-developer. **S04 is complete, and so is the project plan.**
+
+- **README:** one-time setup (tools table, `nvm`/Node 22.23.1, poppler, Playwright browser), the 8-step update flow with an expected-output line for every step, numeric stop rules (rows more than 2% from 47,399, rejected above 0, duplicates above 0, the balance line must say `balanced, nothing dropped silently`), how to read `import.md` and `artists-review.md`, how to approve merges or keep artists apart, the exact five paths to commit (never the PDF), deploy by pull request to `main`, the live check (`test:live`), rollback, and a 17-row troubleshooting table.
+- **Dry run:** from a clean state, `npm run import` and `npm run build:data` twice give byte-identical files that equal the committed ones (md5 of all five); dataset id `4d101923bb85a174` unchanged. A simulated update (3 changed or added rows) changed the dataset id, left 14,481 of 14,482 artists byte-identical, and updated the review report.
+- **QA, following the README literally in a fresh copy:** `npm ci`, import, build:data, build, a real merge edit and its revert, local serve and a real-browser search, `npm run qa:full` (341 unit, 174 end-to-end, 261 s). QA found a data-loss hazard and fixed it: the first merge example in Step 6 was a whole file, so pasting it silently replaced the owner's two keep-apart decisions. The README now shows the whole file with the new line marked, a bold never-replace warning, and the check `keepSeparate groups applied: 2`.
+- **Other QA fixes:** `data/source/` does not exist in a clean clone (now `mkdir -p`); a misnamed merge file used to be silently ignored (`build:data` now warns and says so in the report); a bad-JSON merge file printed a stack trace (now one clear line); Vercel wording is by effect, not dashboard labels; terminal and git terms glossed; the 130-versus-39 empty-artist counts explained.
+- **Tests:** a README test (25 tests) checks every `npm run` script, every path, the serve port, the five `git add` paths, the quoted counts and id against the real reports and data, the quoted error messages against the source, and every section letter; 21 README or code mutations each fail exactly one test. `npm run qa` → 28 files, 364 tests, pass.
+- **Maintenance note:** the quoted figures in the README (47,399 rows, the dataset id, 39, 130, 91) go stale after the next published book; the README test fails until a developer updates them.
+- **Not verified:** a different machine, macOS and Ubuntu install commands, Windows/WSL, the Vercel dashboard click paths, a real changed PDF.
+- **Blockers:** none.
+
+---
+
+## ✅ Sprint S04 — Release: COMPLETE (T010, T011)
+End state: the song book is live at https://songhub-songbook.vercel.app (public, hidden from search engines), verified in a real browser on the real CDN, with a runbook the owner can follow. All 11 tickets are done.
+
