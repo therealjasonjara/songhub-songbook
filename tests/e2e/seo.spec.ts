@@ -1,8 +1,10 @@
 import { INPUT, ROWS, ARTIST_LINKS, HEADING, openApp, setTheme } from './support/app';
+import { LIVE_ORIGIN } from './support/live';
 import { expect, test } from './support/test';
 
 // New in T009 (from the SEO agent's list), against the built out/ and host-agnostic: the production origin is not known until deploy
-// (A-013), so nothing here compares a host; absolute URLs are checked by shape.
+// (A-013), so locally nothing here compares a host and absolute URLs are checked by shape. Against a deployment (LIVE_URL, T010)
+// the same tests also require the live host in canonical, og:url, og:image and twitter:image.
 
 const meta = (page: import('@playwright/test').Page, selector: string) =>
   page.locator(`head ${selector}`).evaluateAll((els) => els.map((el) => el.getAttribute('content') ?? el.getAttribute('href') ?? ''));
@@ -24,6 +26,8 @@ test.describe('head tags', () => {
     const canonical = await meta(page, 'link[rel="canonical"]');
     expect(canonical).toHaveLength(1);
     expect(canonical[0]).toMatch(/^https?:\/\/[^/]+\/?$/); // the home page: the origin, with or without the slash
+    // Live mode: the canonical is the deployment's own host, not a placeholder or localhost.
+    if (LIVE_ORIGIN) expect(canonical[0]?.replace(/\/$/, '')).toBe(LIVE_ORIGIN);
   });
 
   test('Open Graph and Twitter card: absolute image URLs ending /og.png, with size and alt text', async ({ page }) => {
@@ -31,7 +35,9 @@ test.describe('head tags', () => {
       const values = await meta(page, selector);
       expect(values, selector).toHaveLength(1);
       expect(values[0], selector).toMatch(/^https?:\/\/[^/\s]+\/og\.png$/);
+      if (LIVE_ORIGIN) expect(values[0], selector).toBe(`${LIVE_ORIGIN}/og.png`);
     }
+    if (LIVE_ORIGIN) expect((await meta(page, 'meta[property="og:url"]'))[0]?.replace(/\/$/, '')).toBe(LIVE_ORIGIN);
     expect(await meta(page, 'meta[property="og:type"]')).toEqual(['website']);
     expect(await meta(page, 'meta[property="og:image:width"]')).toEqual(['1200']);
     expect(await meta(page, 'meta[property="og:image:height"]')).toEqual(['630']);
@@ -90,14 +96,15 @@ test.describe('static files', () => {
   for (const [path, type] of [
     ['/robots.txt', 'text/plain'],
     ['/favicon.svg', 'image/svg+xml'],
-    ['/favicon.ico', 'image/x-icon'],
+    ['/favicon.ico', 'image/x-icon|image/vnd.microsoft.icon'], // the local server says x-icon, Vercel says vnd.microsoft.icon (the IANA name): both are right
     ['/apple-touch-icon.png', 'image/png'],
     ['/og.png', 'image/png'],
   ] as const) {
     test(`${path} answers 200 as ${type}`, async ({ request }) => {
       const res = await request.get(path);
       expect(res.status()).toBe(200);
-      expect(res.headers()['content-type']).toContain(type);
+      const contentType = res.headers()['content-type'] ?? '';
+      expect(type.split('|').some((t) => contentType.includes(t)), `content-type ${contentType}`).toBe(true);
       expect((await res.body()).length).toBeGreaterThan(10);
     });
   }

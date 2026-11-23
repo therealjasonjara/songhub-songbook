@@ -142,3 +142,15 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 ## ✅ Sprint S03 — Search UI: COMPLETE (T006-T009)
 End state: a working mobile-first search app. A guest types a title (typos forgiven) and sees large song numbers; types an artist, taps, and sees every song by them; Back, deep links, theme toggle and enlarged text all work; the build is gated by 331 unit and 169 end-to-end tests. Remaining: S04 release (T010 deploy to Vercel, T011 runbook).
 
+## S04 / T010 — Deploy to Vercel ✅ (2026-11-24)
+
+**Goal met.** The song book is live and public at **https://songhub-songbook.vercel.app**, hidden from search engines.
+
+- **Client decisions:** deploy to Jason Jara's projects (Hobby) as `songhub-songbook`; public but not searchable. Approved going public after reviewing the deployment.
+- **Done:** project created and linked to GitHub; Node pinned to 22.x on Vercel; noindex (meta tag, `X-Robots-Tag` header from `vercel.json`) with `robots.txt` allowing crawling so link previews work; JSON-LD dropped; login wall limited to preview deployments (A-015, A-016).
+- **Verified live:** `npm run test:live` against the real CDN: 179 passed, 2 skipped by design, 0 failures (accessibility, contrast, layout, search, artists and history, SEO, fault injection, plus HTTPS redirect, HTTP/2, Brotli, caching, 304s, 404 pages, preview bots). I re-checked the key points by hand. Live performance: first results ~0.5 s after the data arrives, keystroke p95 56 ms, dataset 880 KB over the wire.
+- **Mistake, recorded:** the project's first deployment is made production automatically; it went live before approval (briefly open, about three minutes, noindex) after I loosened the protection setting. Locked immediately, opened only after the client approved. Details and the rule for next time in A-016.
+- **Open:** the client should check Vercel's Hobby-plan terms (non-commercial use) if the app serves a business; test on a real phone (`docs/DEVICE-CHECKLIST.md`); `main` still holds only the scaffold until the sprint PRs are merged (production redeploys from `main` then).
+- **Not verified:** real phone and Safari, real Slack/WhatsApp/Facebook/X rendering, other regions, Vercel bot protection under real bot IPs.
+- **Blockers:** none.
+

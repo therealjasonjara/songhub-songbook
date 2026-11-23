@@ -17,6 +17,7 @@
     "qa": "npm run typecheck && npm run lint && npm run test",
     "test:e2e": "playwright test",
     "e2e": "playwright test",
+    "test:live": "playwright test -c playwright.live.config.ts",
     "qa:full": "npm run qa && npm run build && npm run test:e2e",
     "measure:browser": "node scripts/measure-browser.mjs",
     "measure:perf": "PERF_SWEEP=1 playwright test performance --grep \"A-014 sweep\""
