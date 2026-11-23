@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { RunningServer, StartServerOptions } from '../../scripts/serve-out.mjs';
 import { ERROR_TEXT, INPUT, STATUS, openApp, waitHydrated, waitWorkerReady } from './support/app';
+import { LIVE } from './support/live';
 import { expect, test } from './support/test';
 
 // Smoke steps ported: 1 (data downloaded once; main thread never blocked), 4 (failed load, Try again), 5 (loading line only if typed before ready).
@@ -17,6 +18,7 @@ const INPUT_EVENT_LIMIT_MS = 100;
 
 test.describe('loading', () => {
   test('the data is downloaded once (each file sent in full once) and the main thread is never blocked while it loads', async ({ page }) => {
+    test.skip(LIVE, 'needs the in-process static server to see what it sent; the live suite checks the data headers and the 304 in tests/live instead');
     // Its own server, so the test can see what the server really sent. (The browser reports a revalidated 304 as a 200.)
     const own = await startServer({ port: 0, dir: 'out' });
     const served: string[] = [];
@@ -45,13 +47,16 @@ test.describe('loading', () => {
     }
   });
 
-  test('the built HTML preloads both data files, and the worker\'s own requests do not download them a second time', async ({ page, request }) => {
+  test('the built HTML preloads both data files with as="fetch" and crossorigin', async ({ request }) => {
     const html = await (await request.get('/')).text();
     const links = [...html.matchAll(/<link\b[^>]*>/g)].map((m) => m[0]).filter((tag) => /\brel="preload"/.test(tag) && /\bas="fetch"/.test(tag));
     const hrefs = links.map((tag) => /\bhref="([^"]*)"/.exec(tag)?.[1]).sort();
     expect(hrefs, 'preload links with as="fetch" in the HTML as served').toEqual(['/data/artists.json', '/data/songs.json']);
     for (const tag of links) expect(tag, 'same-origin anonymous fetch, like the worker').toMatch(/\bcrossorigin=""/);
+  });
 
+  test('the worker\'s own requests do not download the data a second time', async ({ page }) => {
+    test.skip(LIVE, 'needs the in-process static server to see what it sent');
     // What the server really sends: the preload and the worker ask for the same URL; the bytes must travel once per file.
     const own = await startServer({ port: 0, dir: 'out' });
     const served: string[] = [];

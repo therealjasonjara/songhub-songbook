@@ -1,8 +1,10 @@
 import { INPUT, ROWS, ARTIST_LINKS, HEADING, openApp, setTheme } from './support/app';
+import { LIVE_ORIGIN } from './support/live';
 import { expect, test } from './support/test';
 
 // New in T009 (from the SEO agent's list), against the built out/ and host-agnostic: the production origin is not known until deploy
-// (A-013), so nothing here compares a host; absolute URLs are checked by shape.
+// (A-013), so locally nothing here compares a host and absolute URLs are checked by shape. Against a deployment (LIVE_URL, T010)
+// the same tests also require the live host in canonical, og:url, og:image and twitter:image.
 
 const meta = (page: import('@playwright/test').Page, selector: string) =>
   page.locator(`head ${selector}`).evaluateAll((els) => els.map((el) => el.getAttribute('content') ?? el.getAttribute('href') ?? ''));
@@ -24,6 +26,8 @@ test.describe('head tags', () => {
     const canonical = await meta(page, 'link[rel="canonical"]');
     expect(canonical).toHaveLength(1);
     expect(canonical[0]).toMatch(/^https?:\/\/[^/]+\/?$/); // the home page: the origin, with or without the slash
+    // Live mode: the canonical is the deployment's own host, not a placeholder or localhost.
+    if (LIVE_ORIGIN) expect(canonical[0]?.replace(/\/$/, '')).toBe(LIVE_ORIGIN);
   });
 
   test('Open Graph and Twitter card: absolute image URLs ending /og.png, with size and alt text', async ({ page }) => {
@@ -31,7 +35,9 @@ test.describe('head tags', () => {
       const values = await meta(page, selector);
       expect(values, selector).toHaveLength(1);
       expect(values[0], selector).toMatch(/^https?:\/\/[^/\s]+\/og\.png$/);
+      if (LIVE_ORIGIN) expect(values[0], selector).toBe(`${LIVE_ORIGIN}/og.png`);
     }
+    if (LIVE_ORIGIN) expect((await meta(page, 'meta[property="og:url"]'))[0]?.replace(/\/$/, '')).toBe(LIVE_ORIGIN);
     expect(await meta(page, 'meta[property="og:type"]')).toEqual(['website']);
     expect(await meta(page, 'meta[property="og:image:width"]')).toEqual(['1200']);
     expect(await meta(page, 'meta[property="og:image:height"]')).toEqual(['630']);
@@ -44,14 +50,14 @@ test.describe('head tags', () => {
     }
   });
 
-  test('lang is en; the viewport meta allows zoom; the robots meta says index, follow', async ({ page }) => {
+  test('lang is en; the viewport meta allows zoom; there is exactly one robots meta and it says noindex, nofollow', async ({ page }) => {
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
     const viewport = await meta(page, 'meta[name="viewport"]');
     expect(viewport).toHaveLength(1);
     expect(viewport[0]).toContain('width=device-width');
     expect(viewport[0]).toContain('initial-scale=1');
     expect(viewport[0], 'zoom is not disabled').not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale\s*=\s*1(\.0)?\b/);
-    expect(await meta(page, 'meta[name="robots"]')).toEqual(['index, follow']);
+    expect(await meta(page, 'meta[name="robots"]')).toEqual(['noindex, nofollow']);
   });
 
   test('theme-color exists (dark), and the toggle updates it to light and back', async ({ page }) => {
@@ -81,17 +87,8 @@ test.describe('head tags', () => {
     }
   });
 
-  test('one ld+json block parses as a schema.org WebSite whose SearchAction is the real /?q= deep link', async ({ page }) => {
-    const blocks = await page.locator('script[type="application/ld+json"]').evaluateAll((els) => els.map((el) => el.textContent ?? ''));
-    expect(blocks).toHaveLength(1);
-    const data = JSON.parse(blocks[0] ?? '') as { '@context': string; '@type': string; name: string; url: string; inLanguage: string; potentialAction: { '@type': string; target: { urlTemplate: string } } };
-    expect(data['@context']).toBe('https://schema.org');
-    expect(data['@type']).toBe('WebSite');
-    expect(data.name.length).toBeGreaterThan(0);
-    expect(data.url).toMatch(/^https?:\/\/[^/]+\/$/);
-    expect(data.inLanguage).toBe('en');
-    expect(data.potentialAction['@type']).toBe('SearchAction');
-    expect(data.potentialAction.target.urlTemplate).toMatch(/\/\?q=\{search_term_string\}$/);
+  test('no structured data: nothing advertises the site to search engines', async ({ page }) => {
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   });
 });
 
@@ -99,24 +96,35 @@ test.describe('static files', () => {
   for (const [path, type] of [
     ['/robots.txt', 'text/plain'],
     ['/favicon.svg', 'image/svg+xml'],
-    ['/favicon.ico', 'image/x-icon'],
+    ['/favicon.ico', 'image/x-icon|image/vnd.microsoft.icon'], // the local server says x-icon, Vercel says vnd.microsoft.icon (the IANA name): both are right
     ['/apple-touch-icon.png', 'image/png'],
     ['/og.png', 'image/png'],
   ] as const) {
     test(`${path} answers 200 as ${type}`, async ({ request }) => {
       const res = await request.get(path);
       expect(res.status()).toBe(200);
-      expect(res.headers()['content-type']).toContain(type);
+      const contentType = res.headers()['content-type'] ?? '';
+      expect(type.split('|').some((t) => contentType.includes(t)), `content-type ${contentType}`).toBe(true);
       expect((await res.body()).length).toBeGreaterThan(10);
     });
   }
 
-  test('robots.txt allows everything and names no sitemap (one page)', async ({ request }) => {
+  test('robots.txt allows crawling (link previews need it) and names no sitemap; noindex does the hiding', async ({ request }) => {
     const text = await (await request.get('/robots.txt')).text();
     expect(text).toMatch(/^User-agent: \*$/m);
-    expect(text).toMatch(/^Allow: \/$/m);
-    expect(text).not.toMatch(/^Disallow: \/\s*$/m);
+    expect(text).toMatch(/^Allow: \/\s*$/m);
+    expect(text).not.toMatch(/^Disallow:\s*\S/m);
+    expect(text).not.toMatch(/^Sitemap:/im);
   });
+
+  // The headers come from vercel.json (scripts/serve-out.mjs reads it), so this checks the rule that ships.
+  for (const path of ['/', '/data/songs.json', '/og.png', '/robots.txt']) {
+    test(`${path} carries X-Robots-Tag: noindex, nofollow and is still served 200`, async ({ request }) => {
+      const res = await request.get(path);
+      expect(res.status()).toBe(200);
+      expect(res.headers()['x-robots-tag']).toBe('noindex, nofollow');
+    });
+  }
 
   /** width and height from a PNG's IHDR chunk (bytes 16..23, big endian), after the 8-byte signature. */
   function pngSize(png: Buffer): { width: number; height: number; isPng: boolean } {

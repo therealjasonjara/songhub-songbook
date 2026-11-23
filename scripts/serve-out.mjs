@@ -1,13 +1,14 @@
 /**
  * Tiny static server for the exported site (`out/`), for measuring and for the Playwright e2e suite (playwright.config.ts `webServer`).
  * Behaves like a CDN: compresses text responses with gzip (compressed once, then served from memory),
- * sends ETag and Cache-Control (same rules as vercel.json), answers 304 on a matching If-None-Match.
+ * sends ETag and the headers of vercel.json (Cache-Control, X-Robots-Tag), read from that file, answers 304 on a matching If-None-Match.
  *
  *   node scripts/serve-out.mjs [port] [dir]        (defaults: 4173, out)
  * Also importable: `import { startServer } from './serve-out.mjs'`.
  */
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,9 +27,18 @@ const TYPES = {
 };
 const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.txt', '.svg']);
 
-function cacheControl(urlPath) {
-  if (urlPath.startsWith('/_next/static/')) return 'public, max-age=31536000, immutable';
-  return 'public, max-age=0, must-revalidate';
+// The response headers come from vercel.json, the one place they are defined: every rule whose `source` matches the path applies, in
+// file order, later rules overriding earlier ones for the same header (Vercel's behaviour). `source` is a path-to-regexp pattern; the
+// ones used here are literal prefixes plus `(.*)`, which is a plain regular expression, so no library is needed.
+const RULES = JSON.parse(readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')).headers.map((rule) => ({
+  pattern: new RegExp(`^${rule.source}$`),
+  headers: rule.headers,
+}));
+
+function configuredHeaders(urlPath) {
+  const out = {};
+  for (const rule of RULES) if (rule.pattern.test(urlPath)) for (const { key, value } of rule.headers) out[key.toLowerCase()] = value;
+  return out;
 }
 
 export function startServer({ port = 4173, dir = 'out', host = '127.0.0.1' } = {}) {
@@ -65,7 +75,8 @@ export function startServer({ port = 4173, dir = 'out', host = '127.0.0.1' } = {
         res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found');
         return;
       }
-      const headers = { 'content-type': entry.type, etag: entry.etag, 'cache-control': cacheControl(urlPath), vary: 'Accept-Encoding' };
+      // Cache-Control: vercel.json's rule if one matches; otherwise Vercel's default for static files (revalidate every time).
+      const headers = { 'content-type': entry.type, etag: entry.etag, 'cache-control': 'public, max-age=0, must-revalidate', vary: 'Accept-Encoding', ...configuredHeaders(urlPath) };
       if (req.headers['if-none-match'] === entry.etag) {
         res.writeHead(304, headers).end();
         return;

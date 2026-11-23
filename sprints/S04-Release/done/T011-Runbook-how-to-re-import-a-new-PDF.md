@@ -2,7 +2,7 @@
 
 **Sprint:** S04-Release
 **Size:** S
-**Status:** todo
+**Status:** done
 **Assigned agents:** Backend + QA
 
 ## Story
@@ -32,12 +32,13 @@ As the owner, I can update the song book from a new SongHub PDF without develope
 - **Breaking for existing consumers:** no
 
 ## Technical Notes
-None.
+- Runbook is `README.md` (owner-facing setup, update, deploy, rollback and troubleshooting; developer notes at the end). `tests/unit/readme-commands.test.ts` keeps its commands, paths and Node version true; it runs in `npm run qa`.
+- Dry run (same PDF twice from a clean state) and a simulated data-level update are recorded in DECISIONS.md, A-017.
 
 ## QA
-- [ ] `npm run qa` passes
-- [ ] `npm run build` succeeds
-- [ ] Acceptance criteria verified against observed behaviour
+- [x] `npm run qa` passes
+- [x] `npm run build` succeeds
+- [x] Acceptance criteria verified against observed behaviour
 
 ## Blockers
 - None

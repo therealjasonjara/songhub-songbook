@@ -142,3 +142,33 @@ Plan: 4 sprints, 11 tickets. See `sprints/`.
 ## ✅ Sprint S03 — Search UI: COMPLETE (T006-T009)
 End state: a working mobile-first search app. A guest types a title (typos forgiven) and sees large song numbers; types an artist, taps, and sees every song by them; Back, deep links, theme toggle and enlarged text all work; the build is gated by 331 unit and 169 end-to-end tests. Remaining: S04 release (T010 deploy to Vercel, T011 runbook).
 
+## S04 / T010 — Deploy to Vercel ✅ (2026-11-24)
+
+**Goal met.** The song book is live and public at **https://songhub-songbook.vercel.app**, hidden from search engines.
+
+- **Client decisions:** deploy to Jason Jara's projects (Hobby) as `songhub-songbook`; public but not searchable. Approved going public after reviewing the deployment.
+- **Done:** project created and linked to GitHub; Node pinned to 22.x on Vercel; noindex (meta tag, `X-Robots-Tag` header from `vercel.json`) with `robots.txt` allowing crawling so link previews work; JSON-LD dropped; login wall limited to preview deployments (A-015, A-016).
+- **Verified live:** `npm run test:live` against the real CDN: 179 passed, 2 skipped by design, 0 failures (accessibility, contrast, layout, search, artists and history, SEO, fault injection, plus HTTPS redirect, HTTP/2, Brotli, caching, 304s, 404 pages, preview bots). I re-checked the key points by hand. Live performance: first results ~0.5 s after the data arrives, keystroke p95 56 ms, dataset 880 KB over the wire.
+- **Mistake, recorded:** the project's first deployment is made production automatically; it went live before approval (briefly open, about three minutes, noindex) after I loosened the protection setting. Locked immediately, opened only after the client approved. Details and the rule for next time in A-016.
+- **Open:** the client should check Vercel's Hobby-plan terms (non-commercial use) if the app serves a business; test on a real phone (`docs/DEVICE-CHECKLIST.md`); `main` still holds only the scaffold until the sprint PRs are merged (production redeploys from `main` then).
+- **Not verified:** real phone and Safari, real Slack/WhatsApp/Facebook/X rendering, other regions, Vercel bot protection under real bot IPs.
+- **Blockers:** none.
+
+## S04 / T011 — Runbook: how to re-import a new PDF ✅ (2026-11-24)
+
+**Goal met.** The owner can update the song book from a new SongHub PDF with a few commands and a README written for a non-developer. **S04 is complete, and so is the project plan.**
+
+- **README:** one-time setup (tools table, `nvm`/Node 22.23.1, poppler, Playwright browser), the 8-step update flow with an expected-output line for every step, numeric stop rules (rows more than 2% from 47,399, rejected above 0, duplicates above 0, the balance line must say `balanced, nothing dropped silently`), how to read `import.md` and `artists-review.md`, how to approve merges or keep artists apart, the exact five paths to commit (never the PDF), deploy by pull request to `main`, the live check (`test:live`), rollback, and a 17-row troubleshooting table.
+- **Dry run:** from a clean state, `npm run import` and `npm run build:data` twice give byte-identical files that equal the committed ones (md5 of all five); dataset id `4d101923bb85a174` unchanged. A simulated update (3 changed or added rows) changed the dataset id, left 14,481 of 14,482 artists byte-identical, and updated the review report.
+- **QA, following the README literally in a fresh copy:** `npm ci`, import, build:data, build, a real merge edit and its revert, local serve and a real-browser search, `npm run qa:full` (341 unit, 174 end-to-end, 261 s). QA found a data-loss hazard and fixed it: the first merge example in Step 6 was a whole file, so pasting it silently replaced the owner's two keep-apart decisions. The README now shows the whole file with the new line marked, a bold never-replace warning, and the check `keepSeparate groups applied: 2`.
+- **Other QA fixes:** `data/source/` does not exist in a clean clone (now `mkdir -p`); a misnamed merge file used to be silently ignored (`build:data` now warns and says so in the report); a bad-JSON merge file printed a stack trace (now one clear line); Vercel wording is by effect, not dashboard labels; terminal and git terms glossed; the 130-versus-39 empty-artist counts explained.
+- **Tests:** a README test (25 tests) checks every `npm run` script, every path, the serve port, the five `git add` paths, the quoted counts and id against the real reports and data, the quoted error messages against the source, and every section letter; 21 README or code mutations each fail exactly one test. `npm run qa` → 28 files, 364 tests, pass.
+- **Maintenance note:** the quoted figures in the README (47,399 rows, the dataset id, 39, 130, 91) go stale after the next published book; the README test fails until a developer updates them.
+- **Not verified:** a different machine, macOS and Ubuntu install commands, Windows/WSL, the Vercel dashboard click paths, a real changed PDF.
+- **Blockers:** none.
+
+---
+
+## ✅ Sprint S04 — Release: COMPLETE (T010, T011)
+End state: the song book is live at https://songhub-songbook.vercel.app (public, hidden from search engines), verified in a real browser on the real CDN, with a runbook the owner can follow. All 11 tickets are done.
+
