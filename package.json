@@ -15,8 +15,12 @@
     "import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import/index.ts",
     "build:data": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import/build-data.ts",
     "qa": "npm run typecheck && npm run lint && npm run test",
-    "e2e:smoke": "node tests/e2e/search-smoke.mjs",
-    "measure:browser": "node scripts/measure-browser.mjs"
+    "test:e2e": "playwright test",
+    "e2e": "playwright test",
+    "test:live": "playwright test -c playwright.live.config.ts",
+    "qa:full": "npm run qa && npm run build && npm run test:e2e",
+    "measure:browser": "node scripts/measure-browser.mjs",
+    "measure:perf": "PERF_SWEEP=1 playwright test performance --grep \"A-014 sweep\""
   },
   "dependencies": {
     "minisearch": "7.2.0",
@@ -25,11 +29,16 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.5",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.13",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "axe-core": "4.14.1",
     "eslint": "10.15.0",
     "eslint-config-next": "16.4.6",
     "jsdom": "31.0.1",

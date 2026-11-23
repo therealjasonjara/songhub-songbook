@@ -6,7 +6,7 @@
   --surface: #181a22;
   --surface-pressed: #181a22;
   --input-bg: #20232e;
-  --input-border: #2a2e3b;
+  --input-border: #6b7083;
   --input-border-focus: #ffc933;
   --divider: #2a2e3b;
   --text: #f4f5f8;
@@ -63,4 +63,18 @@ body {
   line-height: 24px;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The search field draws its own clear button; hide the browser's so there is never a second X. */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
 }

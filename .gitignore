@@ -14,3 +14,7 @@ data/work/
 # tooling config
 .claude/
 .measure/
+
+test-results/
+playwright-report/
+.env*

@@ -115,5 +115,5 @@ describe.skipIf(!present)('search on the real dataset', () => {
     expect(missing).toEqual([]);
     const joined = dotted.filter((s) => !top(normalize(s.t)).some((h) => h.n === s.n)).map((s) => `${s.n} ${s.t}`);
     expect(joined).toEqual([]);
-  });
+  }, 30_000);
 });

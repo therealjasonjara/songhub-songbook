@@ -39,13 +39,18 @@ let root: Root;
 let latest: UseSearchResult;
 let useSearch: (query: string) => UseSearchResult;
 
+// One component type for the whole test, so the hook keeps its state when the query changes.
+function Probe({ q, report }: { q: string; report: (result: UseSearchResult) => void }) {
+  report(useSearch(q));
+  return null;
+}
+const keep = (result: UseSearchResult): void => {
+  latest = result;
+};
+
 function mount(query: string): Promise<void> {
-  function Probe({ q }: { q: string }) {
-    latest = useSearch(q);
-    return null;
-  }
   return act(async () => {
-    root.render(createElement(Probe, { q: query }));
+    root.render(createElement(Probe, { q: query, report: keep }));
   });
 }
 
@@ -122,6 +127,32 @@ describe('useSearch', () => {
     expect(latest.error).not.toBeNull();
     await mount('abcd');
     expect(latest.error).toBeNull();
+    expect(latest.loading).toBe(true);
+  });
+
+  it('clearing the box forgets the old answer: typing again never shows the old query\'s rows', async () => {
+    await mount('hotel');
+    const w = FakeWorker.all[0] as FakeWorker;
+    await act(async () => w.say({ type: 'ready' }));
+    await act(async () => {
+      w.say({ type: 'search', requestId: (w.asked('search')[0] as { requestId: number }).requestId, result: found(1) });
+      w.say({ type: 'suggestArtists', requestId: (w.asked('suggestArtists')[0] as { requestId: number }).requestId, artists: [] });
+    });
+    expect(latest.songs.map((s) => s.n)).toEqual([1]);
+
+    // Typing on from an answered query keeps the rows until the new answer (no flash).
+    await mount('hotels');
+    expect(latest.songs.map((s) => s.n)).toEqual([1]);
+    expect(latest.loading).toBe(true);
+
+    await mount('');
+    expect(latest.songs).toEqual([]);
+    expect(latest.loading).toBe(false);
+
+    await mount('zzz'); // a different query after the clear: the old rows must not come back
+    expect(latest.songs).toEqual([]);
+    expect(latest.total).toBe(0);
+    expect(latest.artists).toEqual([]);
     expect(latest.loading).toBe(true);
   });
 });

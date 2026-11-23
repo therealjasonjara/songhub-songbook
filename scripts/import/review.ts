@@ -161,6 +161,7 @@ export function renderReview(
   diag: BuildDiagnostics,
   near: NearGroup[],
   sizes: SizeInfo,
+  opts: { mergesFileMissing?: boolean } = {},
 ): string {
   const L: string[] = [];
   const confirm = mergedNeedingConfirmation(diag.mergedGroups);
@@ -192,6 +193,9 @@ export function renderReview(
   L.push(`- Distinct printed credits: **${diag.distinctCredits}**`);
   L.push(`- Distinct artist spellings after splitting featured artists: ${diag.distinctSpellings}`);
   L.push(`- Artists after merging identical-when-normalised spellings: ${diag.artistsBeforeMerge}`);
+  if (opts.mergesFileMissing) {
+    L.push('- **WARNING: `data/artist-merges.json` was not found, so no merge decisions were applied.** Check the file name and folder.');
+  }
   L.push(`- Artists after approved merges (\`data/artist-merges.json\`, ${diag.appliedMerges} rule(s) applied): **${diag.artistsAfterMerge}**`);
   L.push(`- Automatically merged groups: ${diag.mergedGroups.length}`);
   L.push(`- Songs with featured artists (split on ft / feat / featuring): ${diag.songsWithFeatured}`);
